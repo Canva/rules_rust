@@ -3,6 +3,11 @@
 use cargo_bazel::cli;
 
 fn main() -> cli::Result<()> {
+
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     // Parse arguments
     let opt = cli::parse_args();
 
