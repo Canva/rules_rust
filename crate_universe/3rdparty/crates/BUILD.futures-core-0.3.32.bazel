@@ -17,7 +17,7 @@ cargo_toml_env_vars(
 )
 
 rust_library(
-    name = "bitflags",
+    name = "futures_core",
     srcs = glob(
         include = ["**/*.rs"],
         allow_empty = True,
@@ -34,164 +34,173 @@ rust_library(
             "WORKSPACE.bazel",
         ],
     ),
-    crate_features = select({
+    crate_features = [
+        "alloc",
+        "std",
+    ] + select({
         "@rules_rust//rust/platform:aarch64-apple-darwin": [
-            "std",  # aarch64-apple-darwin
+            "default",  # aarch64-apple-darwin
         ],
         "@rules_rust//rust/platform:aarch64-apple-ios": [
-            "std",  # aarch64-apple-ios
+            "default",  # aarch64-apple-ios
         ],
         "@rules_rust//rust/platform:aarch64-apple-ios-macabi": [
-            "std",  # aarch64-apple-ios-macabi
+            "default",  # aarch64-apple-ios-macabi
         ],
         "@rules_rust//rust/platform:aarch64-apple-ios-sim": [
-            "std",  # aarch64-apple-ios-sim
+            "default",  # aarch64-apple-ios-sim
         ],
         "@rules_rust//rust/platform:aarch64-linux-android": [
-            "std",  # aarch64-linux-android
+            "default",  # aarch64-linux-android
+        ],
+        "@rules_rust//rust/platform:aarch64-pc-windows-msvc": [
+            "default",  # aarch64-pc-windows-msvc
         ],
         "@rules_rust//rust/platform:aarch64-unknown-fuchsia": [
-            "std",  # aarch64-unknown-fuchsia
+            "default",  # aarch64-unknown-fuchsia
         ],
         "@rules_rust//rust/platform:aarch64-unknown-linux-gnu": [
-            "std",  # aarch64-unknown-linux-gnu
+            "default",  # aarch64-unknown-linux-gnu
         ],
         "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu": [
-            "std",  # aarch64-unknown-linux-gnu, aarch64-unknown-nixos-gnu
+            "default",  # aarch64-unknown-linux-gnu, aarch64-unknown-nixos-gnu
         ],
         "@rules_rust//rust/platform:aarch64-unknown-none": [
-            "std",  # aarch64-unknown-none
+            "default",  # aarch64-unknown-none
         ],
         "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710": [
-            "std",  # aarch64-unknown-nto-qnx710
+            "default",  # aarch64-unknown-nto-qnx710
         ],
         "@rules_rust//rust/platform:aarch64-unknown-uefi": [
-            "std",  # aarch64-unknown-uefi
+            "default",  # aarch64-unknown-uefi
         ],
         "@rules_rust//rust/platform:arm-unknown-linux-gnueabi": [
-            "std",  # arm-unknown-linux-gnueabi
+            "default",  # arm-unknown-linux-gnueabi
         ],
         "@rules_rust//rust/platform:arm-unknown-linux-musleabi": [
-            "std",  # arm-unknown-linux-musleabi
+            "default",  # arm-unknown-linux-musleabi
         ],
         "@rules_rust//rust/platform:armv7-linux-androideabi": [
-            "std",  # armv7-linux-androideabi
+            "default",  # armv7-linux-androideabi
         ],
         "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi": [
-            "std",  # armv7-unknown-linux-gnueabi
+            "default",  # armv7-unknown-linux-gnueabi
         ],
         "@rules_rust//rust/platform:i686-apple-darwin": [
-            "std",  # i686-apple-darwin
+            "default",  # i686-apple-darwin
         ],
         "@rules_rust//rust/platform:i686-linux-android": [
-            "std",  # i686-linux-android
+            "default",  # i686-linux-android
+        ],
+        "@rules_rust//rust/platform:i686-pc-windows-msvc": [
+            "default",  # i686-pc-windows-msvc
         ],
         "@rules_rust//rust/platform:i686-unknown-freebsd": [
-            "std",  # i686-unknown-freebsd
+            "default",  # i686-unknown-freebsd
         ],
         "@rules_rust//rust/platform:i686-unknown-linux-gnu": [
-            "std",  # i686-unknown-linux-gnu
+            "default",  # i686-unknown-linux-gnu
         ],
         "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu": [
-            "std",  # loongarch64-unknown-linux-gnu
+            "default",  # loongarch64-unknown-linux-gnu
         ],
         "@rules_rust//rust/platform:mips-unknown-linux-gnu": [
-            "std",  # mips-unknown-linux-gnu
+            "default",  # mips-unknown-linux-gnu
         ],
         "@rules_rust//rust/platform:powerpc-unknown-linux-gnu": [
-            "std",  # powerpc-unknown-linux-gnu
+            "default",  # powerpc-unknown-linux-gnu
         ],
         "@rules_rust//rust/platform:riscv32imac-unknown-none-elf": [
-            "std",  # riscv32imac-unknown-none-elf
+            "default",  # riscv32imac-unknown-none-elf
         ],
         "@rules_rust//rust/platform:riscv32imc-unknown-none-elf": [
-            "std",  # riscv32imc-unknown-none-elf
+            "default",  # riscv32imc-unknown-none-elf
         ],
         "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu": [
-            "std",  # riscv64gc-unknown-linux-gnu
+            "default",  # riscv64gc-unknown-linux-gnu
         ],
         "@rules_rust//rust/platform:riscv64gc-unknown-none-elf": [
-            "std",  # riscv64gc-unknown-none-elf
+            "default",  # riscv64gc-unknown-none-elf
         ],
         "@rules_rust//rust/platform:s390x-unknown-linux-gnu": [
-            "std",  # s390x-unknown-linux-gnu
+            "default",  # s390x-unknown-linux-gnu
         ],
         "@rules_rust//rust/platform:sparc64-unknown-linux-gnu": [
-            "std",  # sparc64-unknown-linux-gnu
+            "default",  # sparc64-unknown-linux-gnu
         ],
         "@rules_rust//rust/platform:sparc64-unknown-netbsd": [
-            "std",  # sparc64-unknown-netbsd
+            "default",  # sparc64-unknown-netbsd
         ],
         "@rules_rust//rust/platform:sparc64-unknown-openbsd": [
-            "std",  # sparc64-unknown-openbsd
+            "default",  # sparc64-unknown-openbsd
         ],
         "@rules_rust//rust/platform:thumbv6m-none-eabi": [
-            "std",  # thumbv6m-none-eabi
+            "default",  # thumbv6m-none-eabi
         ],
         "@rules_rust//rust/platform:thumbv7em-none-eabi": [
-            "std",  # thumbv7em-none-eabi
+            "default",  # thumbv7em-none-eabi
         ],
         "@rules_rust//rust/platform:thumbv7em-none-eabihf": [
-            "std",  # thumbv7em-none-eabihf
+            "default",  # thumbv7em-none-eabihf
         ],
         "@rules_rust//rust/platform:thumbv7m-none-eabi": [
-            "std",  # thumbv7m-none-eabi
+            "default",  # thumbv7m-none-eabi
         ],
         "@rules_rust//rust/platform:thumbv8m.main-none-eabi": [
-            "std",  # thumbv8m.main-none-eabi
+            "default",  # thumbv8m.main-none-eabi
         ],
         "@rules_rust//rust/platform:thumbv8m.main-none-eabihf": [
-            "std",  # thumbv8m.main-none-eabihf
+            "default",  # thumbv8m.main-none-eabihf
         ],
         "@rules_rust//rust/platform:wasm32-unknown-emscripten": [
-            "std",  # wasm32-unknown-emscripten
-        ],
-        "@rules_rust//rust/platform:wasm32-unknown-unknown": [
-            "std",  # wasm32-unknown-unknown
+            "default",  # wasm32-unknown-emscripten
         ],
         "@rules_rust//rust/platform:wasm32-wasip1": [
-            "std",  # wasm32-wasip1
+            "default",  # wasm32-wasip1
         ],
         "@rules_rust//rust/platform:wasm32-wasip1-threads": [
-            "std",  # wasm32-wasip1-threads
+            "default",  # wasm32-wasip1-threads
         ],
         "@rules_rust//rust/platform:wasm32-wasip2": [
-            "std",  # wasm32-wasip2
+            "default",  # wasm32-wasip2
         ],
         "@rules_rust//rust/platform:x86_64-apple-darwin": [
-            "std",  # x86_64-apple-darwin
+            "default",  # x86_64-apple-darwin
         ],
         "@rules_rust//rust/platform:x86_64-apple-ios": [
-            "std",  # x86_64-apple-ios
+            "default",  # x86_64-apple-ios
         ],
         "@rules_rust//rust/platform:x86_64-apple-ios-macabi": [
-            "std",  # x86_64-apple-ios-macabi
+            "default",  # x86_64-apple-ios-macabi
         ],
         "@rules_rust//rust/platform:x86_64-linux-android": [
-            "std",  # x86_64-linux-android
+            "default",  # x86_64-linux-android
+        ],
+        "@rules_rust//rust/platform:x86_64-pc-windows-msvc": [
+            "default",  # x86_64-pc-windows-msvc
         ],
         "@rules_rust//rust/platform:x86_64-unknown-freebsd": [
-            "std",  # x86_64-unknown-freebsd
+            "default",  # x86_64-unknown-freebsd
         ],
         "@rules_rust//rust/platform:x86_64-unknown-fuchsia": [
-            "std",  # x86_64-unknown-fuchsia
+            "default",  # x86_64-unknown-fuchsia
         ],
         "@rules_rust//rust/platform:x86_64-unknown-linux-gnu": [
-            "std",  # x86_64-unknown-linux-gnu
+            "default",  # x86_64-unknown-linux-gnu
         ],
         "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu": [
-            "std",  # x86_64-unknown-linux-gnu, x86_64-unknown-nixos-gnu
+            "default",  # x86_64-unknown-linux-gnu, x86_64-unknown-nixos-gnu
         ],
         "@rules_rust//rust/platform:x86_64-unknown-none": [
-            "std",  # x86_64-unknown-none
+            "default",  # x86_64-unknown-none
         ],
         "@rules_rust//rust/platform:x86_64-unknown-uefi": [
-            "std",  # x86_64-unknown-uefi
+            "default",  # x86_64-unknown-uefi
         ],
         "//conditions:default": [],
     }),
     crate_root = "src/lib.rs",
-    edition = "2021",
+    edition = "2018",
     rustc_env_files = [
         ":cargo_toml_env_vars",
     ],
@@ -200,7 +209,7 @@ rust_library(
     ],
     tags = [
         "cargo-bazel",
-        "crate-name=bitflags",
+        "crate-name=futures-core",
         "manual",
         "noclippy",
         "norustfmt",
@@ -262,5 +271,5 @@ rust_library(
         "@rules_rust//rust/platform:x86_64-unknown-uefi": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    version = "2.4.1",
+    version = "0.3.32",
 )

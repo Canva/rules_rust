@@ -108,7 +108,7 @@ rust_library(
     }),
     version = "0.10.11",
     deps = [
-        "@cui__bitflags-2.4.1//:bitflags",
+        "@cui__bitflags-2.13.0//:bitflags",
     ] + select({
         "@rules_rust//rust/platform:aarch64-apple-darwin": [
             "@cui__libc-0.2.172//:libc",  # cfg(not(windows))

@@ -108,7 +108,7 @@ rust_library(
     }),
     version = "0.9.1",
     deps = [
-        "@cui__bitflags-2.4.1//:bitflags",
+        "@cui__bitflags-2.13.0//:bitflags",
         "@cui__ignore-0.4.18//:ignore",
         "@cui__walkdir-2.5.0//:walkdir",
     ],

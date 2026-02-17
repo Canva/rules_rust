@@ -108,7 +108,7 @@ rust_library(
     }),
     version = "0.18.0",
     deps = [
-        "@cui__bitflags-2.4.1//:bitflags",
+        "@cui__bitflags-2.13.0//:bitflags",
         "@cui__bstr-1.6.0//:bstr",
         "@cui__gix-features-0.40.0//:gix_features",
         "@cui__gix-path-0.10.14//:gix_path",
