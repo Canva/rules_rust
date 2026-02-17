@@ -117,7 +117,7 @@ rust_library(
     version = "0.39.0",
     deps = [
         ":build_script_build",
-        "@cui__bitflags-2.4.1//:bitflags",
+        "@cui__bitflags-2.13.2//:bitflags",
     ],
 )
 
