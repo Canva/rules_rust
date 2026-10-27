@@ -188,6 +188,9 @@ jobs:
       tag_name: ${{ needs.tag.outputs.tag }}
 
   publish:
+    # Canva fork: never publish to the Bazel Central Registry. Disabling
+    # publish.yaml in the repo settings does not stop this workflow_call.
+    if: false
     needs: [tag, release]
     permissions:
       contents: write
