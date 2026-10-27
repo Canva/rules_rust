@@ -10,6 +10,6 @@ package(default_visibility = ["//visibility:public"])
 
 alias(
     name = "reqwest",
-    actual = "@cui__reqwest-0.13.4//:reqwest",
+    actual = "@cui__reqwest-0.13.5//:reqwest",
     tags = ["manual"],
 )

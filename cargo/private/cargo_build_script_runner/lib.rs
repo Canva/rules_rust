@@ -26,6 +26,14 @@ pub struct CompileAndLinkFlags {
     pub compile_flags: String,
     pub link_flags: String,
     pub link_search_paths: String,
+    /// `-Clink-arg`s that apply only when the crate is built as a cdylib
+    /// (`cargo::rustc-cdylib-link-arg`). The consuming rule gates these on the
+    /// crate type, and propagates them transitively to cdylibs (matching cargo).
+    pub cdylib_link_flags: String,
+    /// Binary-scoped arguments in emission order, encoded as `BIN=-Clink-arg=FLAG`
+    /// per line. An empty `BIN` applies to all binaries; the process wrapper
+    /// selects named arguments before substituting execution paths.
+    pub bin_link_flags: String,
 }
 
 /// Enum containing all the considered return value from the script
@@ -41,6 +49,12 @@ pub enum BuildScriptOutput {
     Flags(String),
     /// cargo::rustc-link-arg
     LinkArg(String),
+    /// cargo::rustc-cdylib-link-arg
+    CdylibLinkArg(String),
+    /// cargo::rustc-link-arg-bins
+    BinLinkArg(String),
+    /// cargo::rustc-link-arg-bin=BIN=FLAG
+    NamedBinLinkArg { name: String, flag: String },
     /// cargo::rustc-env
     Env(String),
     /// cargo::VAR=VALUE
@@ -98,15 +112,25 @@ impl BuildScriptOutput {
                     Some(BuildScriptOutput::DepEnv(format!("METADATA={}", param)))
                 }
             }
-            "rustc-cdylib-link-arg" | "rustc-link-arg-bin" | "rustc-link-arg-bins" => {
-                // cargo::rustc-cdylib-link-arg=FLAG — Passes custom flags to a linker for cdylib crates.
-                // cargo::rustc-link-arg-bin=BIN=FLAG – Passes custom flags to a linker for the binary BIN.
-                // cargo::rustc-link-arg-bins=FLAG – Passes custom flags to a linker for binaries.
-                eprint!(
-                    "Warning: build script returned unsupported directive `{}`",
-                    split[0]
-                );
-                None
+            // cargo::rustc-cdylib-link-arg=FLAG — Passes custom flags to a linker for cdylib crates.
+            "rustc-cdylib-link-arg" | "rustc-link-arg-cdylib" => {
+                Some(BuildScriptOutput::CdylibLinkArg(param))
+            }
+            // cargo::rustc-link-arg-bins=FLAG – Passes custom flags to a linker for binaries.
+            "rustc-link-arg-bins" => Some(BuildScriptOutput::BinLinkArg(param)),
+            "rustc-link-arg-bin" => {
+                let Some((name, flag)) = param.split_once('=') else {
+                    eprintln!("Warning: rustc-link-arg-bin requires BIN=FLAG");
+                    return None;
+                };
+                if name.is_empty() {
+                    eprintln!("Warning: rustc-link-arg-bin requires a nonempty binary name");
+                    return None;
+                }
+                Some(BuildScriptOutput::NamedBinLinkArg {
+                    name: name.to_owned(),
+                    flag: flag.to_owned(),
+                })
             }
             _ => {
                 // cargo::KEY=VALUE — Metadata, used by links scripts.
@@ -181,7 +205,6 @@ impl BuildScriptOutput {
         outputs: &[BuildScriptOutput],
         crate_links: &str,
         exec_root: &str,
-        out_dir: &str,
     ) -> String {
         let prefix = format!("DEP_{}_", crate_links.replace('-', "_").to_uppercase());
         outputs
@@ -191,7 +214,14 @@ impl BuildScriptOutput {
                     Some(format!(
                         "{}{}",
                         prefix,
-                        Self::escape_for_serializing(Self::redact_paths(env, exec_root, out_dir))
+                        // Do NOT redact the producer's out_dir to the generic
+                        // `${out_dir}` token here: DEP_* env vars are consumed
+                        // by *downstream* crates' build scripts, whose runner
+                        // only substitutes `${pwd}` and whose own out_dir
+                        // points to a different directory, so the token would
+                        // resolve incorrectly (or not at all). Only the exec
+                        // root is safe to substitute.
+                        Self::escape_for_serializing(Self::redact_exec_root(env, exec_root))
                     ))
                 } else {
                     None
@@ -210,12 +240,21 @@ impl BuildScriptOutput {
         let mut compile_flags = Vec::new();
         let mut link_flags = Vec::new();
         let mut link_search_paths = Vec::new();
+        let mut cdylib_link_flags = Vec::new();
+        let mut bin_link_flags = Vec::new();
 
         for flag in outputs {
             match flag {
                 BuildScriptOutput::Cfg(e) => compile_flags.push(format!("--cfg={e}")),
                 BuildScriptOutput::Flags(e) => compile_flags.push(e.to_owned()),
                 BuildScriptOutput::LinkArg(e) => compile_flags.push(format!("-Clink-arg={e}")),
+                BuildScriptOutput::CdylibLinkArg(e) => {
+                    cdylib_link_flags.push(format!("-Clink-arg={e}"))
+                }
+                BuildScriptOutput::BinLinkArg(e) => bin_link_flags.push(format!("=-Clink-arg={e}")),
+                BuildScriptOutput::NamedBinLinkArg { name, flag } => {
+                    bin_link_flags.push(format!("{name}=-Clink-arg={flag}"));
+                }
                 BuildScriptOutput::LinkLib(e) => link_flags.push(format!("-l{e}")),
                 BuildScriptOutput::LinkSearch(e) => link_search_paths.push(format!("-L{e}")),
                 _ => {}
@@ -230,6 +269,12 @@ impl BuildScriptOutput {
                 exec_root,
                 out_dir,
             ),
+            cdylib_link_flags: Self::redact_flags(
+                &cdylib_link_flags.join("\n"),
+                exec_root,
+                out_dir,
+            ),
+            bin_link_flags: Self::redact_flags(&bin_link_flags.join("\n"), exec_root, out_dir),
         }
     }
 
@@ -321,7 +366,7 @@ mod tests {
             BuildScriptOutput::Env("no_trailing_newline=true".to_owned())
         );
         assert_eq!(
-            BuildScriptOutput::outputs_to_dep_env(&result, "ssh2", "/some/absolute/path", ""),
+            BuildScriptOutput::outputs_to_dep_env(&result, "ssh2", "/some/absolute/path"),
             "DEP_SSH2_VERSION=123\nDEP_SSH2_VERSION_NUMBER=1010107f\nDEP_SSH2_INCLUDE_PATH=${pwd}/include".to_owned()
         );
         assert_eq!(
@@ -338,6 +383,8 @@ mod tests {
                         .to_owned(),
                 link_flags: "-lsdfsdf".to_owned(),
                 link_search_paths: "-L${pwd}/bleh".to_owned(),
+                cdylib_link_flags: "".to_owned(),
+                bin_link_flags: "".to_owned(),
             }
         );
     }
@@ -364,6 +411,44 @@ non-cargo-prefixes::are-ignored=true
 non-assignment-instructions-are-ignored",
         );
         from_read_buffer_to_env_and_flags_test_impl(buff);
+    }
+
+    // https://github.com/bazelbuild/rules_rust/issues/4299
+    #[test]
+    fn scoped_link_args_preserve_names_order_and_paths() {
+        let buff = Cursor::new(
+            "cargo:rustc-cdylib-link-arg=-first\n\
+             cargo::rustc-link-arg-cdylib=-second\n\
+             cargo::rustc-link-arg-bins=-before\n\
+             cargo::rustc-link-arg-bin=my-bin=/exec/out/file=with=equals\n\
+             cargo:rustc-link-arg-bin=my_bin=-other\n\
+             cargo::rustc-link-arg-bins=-after",
+        );
+        let result = BuildScriptOutput::outputs_from_reader(BufReader::new(buff), false);
+        let flags = BuildScriptOutput::outputs_to_flags(&result, "/exec", "out");
+        assert_eq!(
+            flags.cdylib_link_flags,
+            "-Clink-arg=-first\n-Clink-arg=-second"
+        );
+        assert_eq!(
+            flags.bin_link_flags,
+            "=-Clink-arg=-before\n\
+             my-bin=-Clink-arg=${pwd}/${out}/file=with=equals\n\
+             my_bin=-Clink-arg=-other\n\
+             =-Clink-arg=-after"
+        );
+        assert_eq!(flags.compile_flags, "");
+        assert_eq!(flags.link_flags, "");
+    }
+
+    #[test]
+    fn malformed_named_binary_flags_do_not_become_unscoped_flags() {
+        for line in [
+            "cargo::rustc-link-arg-bin=oops",
+            "cargo::rustc-link-arg-bin==-bad",
+        ] {
+            assert_eq!(BuildScriptOutput::new(line, false), None);
+        }
     }
 
     /// Demonstrate that the old style single colon flags are all parsable
@@ -478,6 +563,27 @@ cargo::rustc-env=BAR=/abs/exec_root/elsewhere/file.rs
         );
     }
 
+    /// Verify that `DEP_*` values referencing the producer's `out_dir` keep
+    /// the real path (with only the exec root substituted). Dep env files are
+    /// consumed by *downstream* crates' build scripts, whose runner only
+    /// substitutes `${pwd}` and whose own `out_dir` points to a different
+    /// directory, so a `${out_dir}` token would be left unresolved (e.g.
+    /// libssh2-sys failing to find `zlib.h` from libz-sys's `DEP_Z_INCLUDE`).
+    #[test]
+    fn out_dir_in_dep_env_value_is_not_redacted_to_substitution_token() {
+        let buff = Cursor::new(
+            "
+cargo::include=/abs/exec_root/bazel-out/cfg/bin/pkg/_bs.out_dir/include
+",
+        );
+        let reader = BufReader::new(buff);
+        let result = BuildScriptOutput::outputs_from_reader(reader, true);
+        assert_eq!(
+            BuildScriptOutput::outputs_to_dep_env(&result, "z", "/abs/exec_root"),
+            "DEP_Z_INCLUDE=${pwd}/bazel-out/cfg/bin/pkg/_bs.out_dir/include"
+        );
+    }
+
     /// Link search paths use the full `out_dir` path as the substitution
     /// key so each build script gets a unique token. This avoids
     /// collisions when the flag file is consumed transitively by a target
@@ -503,6 +609,8 @@ cargo::rustc-link-search=/abs/exec_root/other/path
                 link_flags: "".to_owned(),
                 link_search_paths:
                     "-L${pwd}/${bazel-out/cfg/bin/pkg/_bs.out_dir}\n-L${pwd}/other/path".to_owned(),
+                cdylib_link_flags: "".to_owned(),
+                bin_link_flags: "".to_owned(),
             }
         );
     }

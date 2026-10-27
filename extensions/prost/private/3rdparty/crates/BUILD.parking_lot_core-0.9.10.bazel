@@ -80,6 +80,7 @@ rust_library(
         "@rules_rust//rust/platform:powerpc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv32imac-unknown-none-elf": [],
         "@rules_rust//rust/platform:riscv32imc-unknown-none-elf": [],
+        "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-none-elf": [],
         "@rules_rust//rust/platform:s390x-unknown-linux-gnu": [],
@@ -112,8 +113,8 @@ rust_library(
     }),
     version = "0.9.10",
     deps = [
+        ":build_script_build",
         "@rrprd__cfg-if-1.0.0//:cfg_if",
-        "@rrprd__parking_lot_core-0.9.10//:build_script_build",
         "@rrprd__smallvec-1.13.2//:smallvec",
     ] + select({
         "@rules_rust//rust/platform:aarch64-apple-darwin": [
@@ -182,6 +183,9 @@ rust_library(
         "@rules_rust//rust/platform:powerpc-unknown-linux-gnu": [
             "@rrprd__libc-0.2.158//:libc",  # cfg(unix)
         ],
+        "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia": [
+            "@rrprd__libc-0.2.158//:libc",  # cfg(unix)
+        ],
         "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu": [
             "@rrprd__libc-0.2.158//:libc",  # cfg(unix)
         ],
@@ -237,6 +241,9 @@ cargo_build_script(
         include = ["**/*.rs"],
         allow_empty = True,
     ),
+    build_script_env_files = [
+        ":cargo_toml_env_vars",
+    ],
     compile_data = glob(
         include = ["**"],
         allow_empty = True,

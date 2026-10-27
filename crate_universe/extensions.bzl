@@ -26,7 +26,7 @@ There are some examples of using crate_universe with bzlmod in the [example fold
 To use rules_rust in a project using bzlmod, add the following to your MODULE.bazel file:
 
 ```python
-bazel_dep(name = "rules_rust", version = "0.71.2")
+bazel_dep(name = "rules_rust", version = "0.75.0")
 ```
 
 You find the latest version on the [release page](https://github.com/bazelbuild/rules_rust/releases).
@@ -246,7 +246,7 @@ module(
 bazel_dep(name = "bazel_skylib", version = "1.8.2")
 
 # https://github.com/bazelbuild/rules_rust/releases
-bazel_dep(name = "rules_rust", version = "0.71.2")
+bazel_dep(name = "rules_rust", version = "0.75.0")
 
 ###############################################################################
 # T O O L C H A I N S
@@ -1041,9 +1041,22 @@ def _crate_impl(module_ctx):
                 annotation_dict["gen_binaries"] = True
             annotation_dict["gen_build_script"] = _OPT_BOOL_VALUES[annotation_dict["gen_build_script"]]
 
+            # Convert the tri-state string values ("auto"/"on"/"off") into the
+            # `int` representation understood by `crate.annotation` (`None`, `1`,
+            # or `0` respectively).
+            for opt_bool_key in (
+                "build_script_use_cc_toolchain",
+                "build_script_use_default_shell_env",
+            ):
+                bool_value = _OPT_BOOL_VALUES[annotation_dict[opt_bool_key]]
+                if bool_value == None:
+                    annotation_dict.pop(opt_bool_key)
+                else:
+                    annotation_dict[opt_bool_key] = int(bool_value)
+
             # Process the override targets for the annotation.
             # In the non-bzlmod approach, this is given as a dict
-            # with the possible keys "`proc_macro`, `build_script`, `lib`, `bin`".
+            # with the possible keys "`proc-macro`, `custom-build`, `lib`, `bin`".
             # With the tag-based approach used in Bzlmod, we run into an issue
             # where there is no dict type that takes a string as a key and a Label as the value.
             # To work around this, we split the override option into four, and reconstruct the
@@ -1055,11 +1068,11 @@ def _crate_impl(module_ctx):
 
             replacement = annotation_dict.pop("override_target_proc_macro")
             if replacement:
-                annotation_dict["override_targets"]["proc_macro"] = str(replacement)
+                annotation_dict["override_targets"]["proc-macro"] = str(replacement)
 
             replacement = annotation_dict.pop("override_target_build_script")
             if replacement:
-                annotation_dict["override_targets"]["build_script"] = str(replacement)
+                annotation_dict["override_targets"]["custom-build"] = str(replacement)
 
             replacement = annotation_dict.pop("override_target_bin")
             if replacement:
@@ -1306,6 +1319,24 @@ _ANNOTATION_NORMAL_ATTRS = {
     "build_script_toolchains": attr.label_list(
         doc = "A list of labels to set on a crates's `cargo_build_script::toolchains` attribute.",
     ),
+    "build_script_use_cc_toolchain": attr.string(
+        doc = (
+            "Whether or not to pull in the resolved `cc_toolchain` when running the build script. " +
+            "Supported values are `on`, `off`, and `auto`. Setting `auto` (the default) defers to the " +
+            "`@rules_rust//cargo/settings:use_cc_toolchain` build setting (defaults to enabled)."
+        ),
+        values = _OPT_BOOL_VALUES.keys(),
+        default = "auto",
+    ),
+    "build_script_use_default_shell_env": attr.string(
+        doc = (
+            "Whether or not to include the default shell environment for the build script action. " +
+            "Supported values are `on`, `off`, and `auto`. Setting `auto` (the default) defers to the " +
+            "`@rules_rust//cargo/settings:use_default_shell_env` build setting."
+        ),
+        values = _OPT_BOOL_VALUES.keys(),
+        default = "auto",
+    ),
     "compile_data_glob": attr.string_list(
         doc = "A list of glob patterns to add to a crate's `rust_library::compile_data` attribute.",
     ),
@@ -1386,6 +1417,9 @@ _ANNOTATION_SELECT_ATTRS = {
     ),
     "build_script_env": attr.string_dict(
         doc = "Additional environment variables to set on a crate's `cargo_build_script::env` attribute.",
+    ),
+    "build_script_env_files": _relative_label_list(
+        doc = "A list of labels to set on a crate's `cargo_build_script::build_script_env_files` attribute.",
     ),
     "build_script_exec_properties": attr.string_dict(
         doc = "Execution properties to set on a crate's `cargo_build_script::exec_properties` attribute.",
@@ -1543,12 +1577,12 @@ can be found below where the supported keys for each template can be found in th
             doc = (
                 "The base template to use for crate aliases. The available format keys are " +
                 "[`{repository}`, `{name}`, `{version}`, `{target}`]. Defaults to the per-alias " +
-                "subpackage layout (`//{name}-{version}`); set to `//:{name}-{version}` if " +
-                "you intentionally want `aliases()` / `all_crate_deps()` to point at the " +
-                "legacy root-package aliases (only valid while " +
+                "subpackage layout (`@{repository}//{name}-{version}`); set to " +
+                "`@{repository}//:{name}-{version}` to point `aliases()` / `all_crate_deps()` at " +
+                "the legacy root-package aliases (only valid while " +
                 "`incompatible_no_root_alias_targets` is off)."
             ),
-            default = "//{name}-{version}",
+            default = "@{repository}//{name}-{version}",
         ),
         "crate_label_template": attr.string(
             doc = "The base template to use for crate labels. The available format keys are [`{repository}`, `{name}`, `{version}`, `{target}`].",

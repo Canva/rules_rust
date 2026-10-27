@@ -20,7 +20,7 @@ given targets. This file can be consumed by rust-analyzer as an alternative
 to Cargo.toml files.
 """
 
-load("//rust/platform:triple_mappings.bzl", "system_to_dylib_ext", "triple_to_system")
+load("//rust/platform:triple_mappings.bzl", "system_to_dylib_ext")
 load("//rust/private:common.bzl", "rust_common")
 load("//rust/private:providers.bzl", "RustAnalyzerGroupInfo", "RustAnalyzerInfo")
 load("//rust/private:rustc.bzl", "BuildInfo")
@@ -195,14 +195,13 @@ def find_proc_macro_dylib(toolchain, target):
     if crate_info.type != "proc-macro":
         return None
 
-    dylib_ext = system_to_dylib_ext(triple_to_system(toolchain.target_triple))
+    # Use the exec ext: rust-analyzer (host) is what loads the dylib.
+    dylib_ext = system_to_dylib_ext(toolchain.exec_triple.system)
     for action in target.actions:
         for output in action.outputs.to_list():
             if output.extension == dylib_ext[1:]:
                 return output
 
-    # Failed to find the dylib path inside a proc-macro crate.
-    # TODO: Should this be an error?
     return None
 
 rust_analyzer_aspect = aspect(
@@ -267,7 +266,7 @@ def _create_single_crate(ctx, attrs, info):
 
     # We're only interested in the build info for local crates as these are the
     # only ones for which we want build file watching and code lens runnables support.
-    if not is_external and not is_generated:
+    if not is_external:
         crate["build"] = {
             "build_file": _WORKSPACE_TEMPLATE + ctx.build_file_path,
             # Emit canonical `//pkg:name` form. Bazel's BEP reports action
@@ -281,8 +280,16 @@ def _create_single_crate(ctx, attrs, info):
     if is_generated:
         srcs = getattr(ctx.rule.files, "srcs", [])
         src_map = {src.short_path: src for src in srcs if src.is_source}
+
+        # Only re-anchor into the workspace when every sibling src lives there too.
+        has_generated_srcs = any([
+            not src.is_source
+            for src in srcs
+            if src.short_path != info.crate.root.short_path
+        ])
         if info.crate.root.short_path in src_map:
-            crate["root_module"] = _WORKSPACE_TEMPLATE + src_map[info.crate.root.short_path].path
+            if not has_generated_srcs:
+                crate["root_module"] = _WORKSPACE_TEMPLATE + src_map[info.crate.root.short_path].path
             crate["source"]["include_dirs"].extend([
                 _WORKSPACE_TEMPLATE + src_map[info.crate.root.short_path].dirname,
                 path_prefix + info.crate.root.dirname,
@@ -402,8 +409,12 @@ rust_analyzer_toolchain = rule(
     },
 )
 
-def _current_rust_analyzer_toolchain_impl(ctx):
+def _rust_analyzer_toolchain_alias_impl(ctx):
     toolchain = ctx.toolchains[str(Label("@rules_rust//rust/rust_analyzer:toolchain_type"))]
+    if not toolchain:
+        if ctx.attr.mandatory:
+            fail("{}: no `rust_analyzer_toolchain` is registered for the current platform".format(ctx.label))
+        return []
 
     files = []
     if toolchain.rust_analyzer:
@@ -421,11 +432,24 @@ def _current_rust_analyzer_toolchain_impl(ctx):
         ),
     ]
 
-current_rust_analyzer_toolchain = rule(
-    doc = "A rule for exposing the current registered `rust_analyzer_toolchain`.",
-    implementation = _current_rust_analyzer_toolchain_impl,
+rust_analyzer_toolchain_alias = rule(
+    doc = """\
+A target standing in for the `rust_analyzer_toolchain` resolved for the current platform.
+
+The alias forwards the toolchain's providers, its Make variables and the
+`rust-analyzer`, proc-macro server and `rustc` binaries it carries.
+`@rules_rust//rust/toolchain:current_rust_analyzer_toolchain` is the alias
+`rules_rust` declares.
+""",
+    implementation = _rust_analyzer_toolchain_alias_impl,
+    attrs = {
+        "mandatory": attr.bool(
+            doc = "Whether to fail when no toolchain is registered. When `False`, the target provides nothing instead.",
+            default = True,
+        ),
+    },
     toolchains = [
-        str(Label("@rules_rust//rust/rust_analyzer:toolchain_type")),
+        config_common.toolchain_type(str(Label("@rules_rust//rust/rust_analyzer:toolchain_type")), mandatory = False),
     ],
 )
 

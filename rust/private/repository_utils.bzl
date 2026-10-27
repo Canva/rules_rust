@@ -105,7 +105,7 @@ def BUILD_for_compiler(target_triple, include_linker = False, include_objcopy = 
     """Emits a BUILD file the compiler archive.
 
     Args:
-        target_triple (str): The triple of the target platform
+        target_triple (struct): The triple of the target platform
         include_linker (bool): Whether to generate targets for linkers.
         include_objcopy (bool): Whether to generate targets for rust-objcopy.
 
@@ -114,7 +114,7 @@ def BUILD_for_compiler(target_triple, include_linker = False, include_objcopy = 
     """
     content = [_build_file_for_compiler_template.format(
         binary_ext = system_to_binary_ext(target_triple.system),
-        staticlib_ext = system_to_staticlib_ext(target_triple.system),
+        staticlib_ext = system_to_staticlib_ext(target_triple.system, target_triple.abi),
         dylib_ext = system_to_dylib_ext(target_triple.system),
         target_triple = target_triple.str,
     )]
@@ -123,7 +123,7 @@ def BUILD_for_compiler(target_triple, include_linker = False, include_objcopy = 
         content.append(
             _build_file_for_linker_template.format(
                 binary_ext = system_to_binary_ext(target_triple.system),
-                staticlib_ext = system_to_staticlib_ext(target_triple.system),
+                staticlib_ext = system_to_staticlib_ext(target_triple.system, target_triple.abi),
                 dylib_ext = system_to_dylib_ext(target_triple.system),
                 target_triple = target_triple.str,
             ),
@@ -150,7 +150,7 @@ def BUILD_for_cargo(target_triple):
     """Emits a BUILD file the cargo archive.
 
     Args:
-        target_triple (str): The triple of the target platform
+        target_triple (struct): The triple of the target platform
 
     Returns:
         str: The contents of a BUILD file
@@ -171,7 +171,7 @@ def BUILD_for_rust_analyzer(target_triple):
     """Emits a BUILD file for the rust-analyzer archive.
 
     Args:
-        target_triple (str): The triple of the target platform
+        target_triple (struct): The triple of the target platform
 
     Returns:
         str: The contents of a BUILD file
@@ -200,7 +200,7 @@ def BUILD_for_rustfmt(target_triple):
     """Emits a BUILD file the rustfmt archive.
 
     Args:
-        target_triple (str): The triple of the target platform
+        target_triple (struct): The triple of the target platform
 
     Returns:
         str: The contents of a BUILD file
@@ -221,7 +221,7 @@ def BUILD_for_rust_analyzer_proc_macro_srv(exec_triple):
     """Emits a BUILD file the rust_analyzer_proc_macro_srv archive.
 
     Args:
-        exec_triple (str): The triple of the exec platform
+        exec_triple (struct): The triple of the exec platform
     Returns:
         str: The contents of a BUILD file
     """
@@ -246,7 +246,7 @@ def BUILD_for_clippy(target_triple):
     """Emits a BUILD file the clippy archive.
 
     Args:
-        target_triple (str): The triple of the target platform
+        target_triple (struct): The triple of the target platform
 
     Returns:
         str: The contents of a BUILD file
@@ -259,7 +259,10 @@ _build_file_for_llvm_tools = """\
 filegroup(
     name = "llvm_lib",
     srcs = glob(
-      ["lib/rustlib/{target_triple}/lib/libLLVM*.so*"],
+      [
+        "lib/rustlib/{target_triple}/lib/libLLVM*.so*",
+        "lib/rustlib/{target_triple}/lib/libLLVM*.dylib",
+      ],
       allow_empty = True,
     ),
     visibility = ["//visibility:public"],
@@ -289,6 +292,27 @@ def BUILD_for_llvm_tools(target_triple):
     """
     return _build_file_for_llvm_tools.format(
         binary_ext = system_to_binary_ext(target_triple.system),
+        target_triple = target_triple.str,
+    )
+
+_build_file_for_rust_mingw = """\
+filegroup(
+    name = "rust_mingw_dlltool",
+    srcs = ["lib/rustlib/{target_triple}/bin/self-contained/dlltool.exe"],
+    visibility = ["//visibility:public"],
+)
+"""
+
+def BUILD_for_rust_mingw(target_triple):
+    """Emits a BUILD file for the rust-mingw binaries.
+
+    Args:
+        target_triple (struct): The triple of the exec platform
+
+    Returns:
+        str: The contents of a BUILD file
+    """
+    return _build_file_for_rust_mingw.format(
         target_triple = target_triple.str,
     )
 
@@ -330,7 +354,7 @@ def BUILD_for_stdlib(target_triple):
     """
     return _build_file_for_stdlib_template.format(
         binary_ext = system_to_binary_ext(target_triple.system),
-        staticlib_ext = system_to_staticlib_ext(target_triple.system),
+        staticlib_ext = system_to_staticlib_ext(target_triple.system, target_triple.abi),
         dylib_ext = system_to_dylib_ext(target_triple.system),
         target_triple = target_triple.str,
     )
@@ -356,6 +380,7 @@ rust_toolchain(
     rustc_lib = "//:rustc_lib",
     allocator_library = {allocator_library},
     global_allocator_library = {global_allocator_library},
+    dlltool = {dlltool},
     binary_ext = "{binary_ext}",
     staticlib_ext = "{staticlib_ext}",
     dylib_ext = "{dylib_ext}",
@@ -384,6 +409,7 @@ def BUILD_for_rust_toolchain(
         iso_date = None,
         allocator_library = None,
         global_allocator_library = None,
+        dlltool = None,
         default_edition = "",
         include_rustfmt = False,
         include_llvm_tools = False,
@@ -407,6 +433,7 @@ def BUILD_for_rust_toolchain(
         global_allocator_library (str, optional): Target that provides allocator functions when a global allocator is used with cc_common_link.
                                                   This target is only used in the target configuration; exec builds still use the symbols provided
                                                   by the `allocator_library` target.
+        dlltool (str, optional): Target that provides the `dlltool` binary.
         default_edition (str): Default Rust edition.
         include_rustfmt (bool): Whether rustfmt is present in the toolchain.
         include_llvm_tools (bool): Whether llvm-tools are present in the toolchain.
@@ -462,10 +489,11 @@ def BUILD_for_rust_toolchain(
     return _build_file_for_rust_toolchain_template.format(
         toolchain_name = name,
         binary_ext = system_to_binary_ext(target_triple.system),
-        staticlib_ext = system_to_staticlib_ext(target_triple.system),
+        staticlib_ext = system_to_staticlib_ext(target_triple.system, target_triple.abi),
         dylib_ext = system_to_dylib_ext(target_triple.system),
         allocator_library = repr(allocator_library_label),
         global_allocator_library = repr(global_allocator_library_label),
+        dlltool = repr(dlltool or None),
         stdlib_linkflags = stdlib_linkflags,
         default_edition = default_edition,
         exec_triple = exec_triple.str,
@@ -752,6 +780,40 @@ def BUILD_for_rustfmt_toolchain(name, rustfmt, rustc, rustc_lib):
         rustc_lib = rustc_lib,
     )
 
+_build_file_for_cargo_toolchain_template = """\
+load("@rules_rust//cargo:cargo_toolchain.bzl", "cargo_toolchain")
+
+cargo_toolchain(
+    name = "{name}",
+    cargo = "{cargo}",
+    version = "{version}",
+    channel = "{channel}",
+    iso_date = {iso_date},
+    visibility = ["//visibility:public"],
+)
+"""
+
+def BUILD_for_cargo_toolchain(name, cargo, version, channel, iso_date = None):
+    """Emits a `cargo_toolchain` target.
+
+    Args:
+        name (str): The name of the toolchain target.
+        cargo (str): The label of the `cargo` binary.
+        version (str): The Rust release Cargo comes from, as passed to `rust_toolchain.version`.
+        channel (str): The release channel, as passed to `rust_toolchain.channel`.
+        iso_date (str, optional): The ISO date of a nightly or beta release.
+
+    Returns:
+        str: The contents of a BUILD file
+    """
+    return _build_file_for_cargo_toolchain_template.format(
+        name = name,
+        cargo = cargo,
+        version = version,
+        channel = channel,
+        iso_date = repr(iso_date),
+    )
+
 def load_rust_stdlib(ctx, target_triple, version, iso_date = None):
     """Loads a rust standard library and yields corresponding BUILD for it
 
@@ -826,6 +888,29 @@ def load_llvm_tools(ctx, target_triple, version, iso_date = None):
     )
 
     return BUILD_for_llvm_tools(target_triple), sha256
+
+def load_rust_mingw(ctx, target_triple, version, iso_date = None):
+    """Loads the rust-mingw component
+
+    Args:
+        ctx (repository_ctx): A repository_ctx.
+        target_triple (struct): The rust-style triple of the exec platform
+        version (str): The version of the tool among \"nightly\", \"beta\", or an exact version.
+        iso_date (str): The iso_date to use with \"nightly\" or \"beta\" versions.
+
+    Returns:
+        Tuple[str, Dict[str, str]]: The BUILD.bazel content and sha256 value of the rust-mingw artifact.
+    """
+    sha256 = load_arbitrary_tool(
+        ctx,
+        iso_date = iso_date,
+        target_triple = target_triple,
+        tool_name = "rust-mingw",
+        tool_subdirectories = ["rust-mingw"],
+        version = version,
+    )
+
+    return BUILD_for_rust_mingw(target_triple), sha256
 
 def check_version_valid(version, iso_date, param_prefix = ""):
     """Verifies that the provided rust version and iso_date make sense.
@@ -936,7 +1021,7 @@ def load_arbitrary_tool(
     Args:
         ctx (repository_ctx): A repository_ctx (no attrs required).
         tool_name (str): The name of the given tool per the archive naming.
-        tool_subdirectories (str): The subdirectories of the tool files (at a level below the root directory of
+        tool_subdirectories (list of str): The subdirectories of the tool files (at a level below the root directory of
             the archive). The root directory of the archive is expected to match
             $TOOL_NAME-$VERSION-$TARGET_TRIPLE.
             Example:
@@ -1137,6 +1222,10 @@ def _toolchain_repository_hub_impl(repository_ctx):
         target_compatible_with = repository_ctx.attr.target_compatible_with,
         exec_compatible_with = repository_ctx.attr.exec_compatible_with,
     ))
+
+    if hasattr(repository_ctx, "repo_metadata"):
+        return repository_ctx.repo_metadata(reproducible = True)
+    return None
 
 toolchain_repository_hub = repository_rule(
     doc = (

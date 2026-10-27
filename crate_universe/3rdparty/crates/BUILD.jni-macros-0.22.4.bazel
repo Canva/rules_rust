@@ -80,6 +80,7 @@ rust_proc_macro(
         "@rules_rust//rust/platform:powerpc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv32imac-unknown-none-elf": [],
         "@rules_rust//rust/platform:riscv32imc-unknown-none-elf": [],
+        "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-none-elf": [],
         "@rules_rust//rust/platform:s390x-unknown-linux-gnu": [],
@@ -112,10 +113,10 @@ rust_proc_macro(
     }),
     version = "0.22.4",
     deps = [
-        "@cui__jni-macros-0.22.4//:build_script_build",
+        ":build_script_build",
         "@cui__proc-macro2-1.0.92//:proc_macro2",
         "@cui__quote-1.0.37//:quote",
-        "@cui__simd_cesu8-1.1.1//:simd_cesu8",
+        "@cui__simd_cesu8-1.2.0//:simd_cesu8",
         "@cui__syn-2.0.90//:syn",
     ],
 )
@@ -126,6 +127,9 @@ cargo_build_script(
         include = ["**/*.rs"],
         allow_empty = True,
     ),
+    build_script_env_files = [
+        ":cargo_toml_env_vars",
+    ],
     compile_data = glob(
         include = ["**"],
         allow_empty = True,

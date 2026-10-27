@@ -4,7 +4,9 @@ load("@apple_support//lib:apple_support.bzl", "apple_support")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
+load("@rules_cc//cc:find_cc_toolchain.bzl", "use_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
+load("//cargo/private:cargo_toolchain.bzl", "cargo_version_mismatch", "find_cargo")
 load("//rust:defs.bzl", "rust_common")
 load("//rust:rust_common.bzl", "BuildInfo", "CrateGroupInfo", "DepInfo")
 
@@ -110,11 +112,17 @@ def _should_prefix_pwd(path):
     if paths.is_absolute(path):
         return False
 
+    if path.startswith("${pwd}"):
+        return False
+
     for placeholder in _BAZEL_PATH_PLACEHOLDERS:
         if path.startswith(placeholder):
             return False
 
     return True
+
+def _expects_space_separated_arg(flag):
+    return not (flag.endswith("=") or flag.endswith(":"))
 
 def _prefix_pwd_to_flag(args, flag_variations):
     """Prefix execroot-relative paths for flags that support both concatenated and space-separated forms (unless it ends with `=` or `:`).
@@ -133,29 +141,27 @@ def _prefix_pwd_to_flag(args, flag_variations):
     res = []
     prefix_next_arg = False
     for arg in args:
-        # When expecting a path argument and we see -Xclang, skip over it and
+        # When expecting a path argument, skip Clang forwarding tokens and
         # map the next argument instead.
         # ex: -Xclang -internal-isystem -Xclang path
         # to: -Xclang -internal-isystem -Xclang ${pwd}/path
-        if prefix_next_arg and arg == "-Xclang":
+        if prefix_next_arg and arg in ("-Xclang", "-Xpreprocessor"):
             res.append(arg)
             continue
 
         handled = False
         new_prefix_next_arg = False
 
-        for flag in flag_variations:
+        for flag in sorted(flag_variations, key = len, reverse = True):
             # Check for exact match first
             if arg == flag:
-                if flag.endswith("=") or flag.endswith(":"):
-                    # Flag ending with '=' or ':' and empty path: keep as-is
-                    res.append(arg)
-                    handled = True
-                    break
-                else:
+                if _expects_space_separated_arg(flag):
                     # Flag without '=' or ':': next arg might be space-separated path
                     new_prefix_next_arg = True
-                continue
+
+                res.append(arg)
+                handled = True
+                break
 
             # Check for concatenated form (flag with path)
             if arg.startswith(flag):
@@ -168,8 +174,10 @@ def _prefix_pwd_to_flag(args, flag_variations):
                 handled = True
                 break
 
-            # Check for space-separated form (only for flags without '=' or ':')
-            if not flag.endswith("=") and not flag.endswith(":") and prefix_next_arg and _should_prefix_pwd(arg.strip()):
+            # Check for space-separated form (only for flags without '=' or ':').
+            # A leading '-' means the flag's value was omitted and this is
+            # actually the next flag, not a path; leave it untouched.
+            if _expects_space_separated_arg(flag) and prefix_next_arg and not arg.strip().startswith("-") and _should_prefix_pwd(arg.strip()):
                 res.append("${{pwd}}/{}".format(arg.strip()))
                 handled = True
                 break
@@ -211,19 +219,35 @@ def _pwd_flags_fsanitize_ignorelist(args):
 
 def _pwd_flags_isystem(args):
     """Prefix execroot-relative paths in -isystem-like arguments with ${pwd}."""
-    return _prefix_pwd_to_flag(args, ["-isystem", "-isystem-after", "-internal-isystem", "-cxx-isystem", "-stdlib++-isystem"])
+    return _prefix_pwd_to_flag(args, ["-isystem", "-isystem-after", "-internal-isystem", "-internal-externc-isystem", "-cxx-isystem", "-stdlib++-isystem", "/imsvc"])
 
 def _pwd_flags_L(args):
     """Prefix execroot-relative paths in -L arguments with ${pwd}."""
-    return _prefix_pwd_to_flag(args, ["-LIBPATH=", "-LIBPATH:", "-LIBPATH", "-L"])
+    return _prefix_pwd_to_flag(args, ["-LIBPATH=", "-LIBPATH:", "-LIBPATH", "/LIBPATH:", "/LIBPATH", "-L"])
 
 def _pwd_flags_B(args):
     """Prefix execroot-relative paths in -B arguments with ${pwd}."""
     return _prefix_pwd_to_flag(args, ["-B"])
 
+def _pwd_flags_compiler_response_file(args):
+    """Prefix execroot-relative compiler response file paths with ${pwd}."""
+
+    # Only the path *to* the response file is fixed. Its contents are left untouched
+    # and won't be resolved by the compiler if they contain execroot-relative paths.
+    # Fixing its content requires reading the file at exec time from cargo_build_script_runner/bin.rs.
+    return _prefix_pwd_to_flag(args, ["@"])
+
 def _pwd_flags_resource_dir(args):
     """Prefix execroot-relative paths in -resource-dir arguments with ${pwd}."""
     return _prefix_pwd_to_flag(args, ["-resource-dir=", "-resource-dir"])
+
+def _pwd_flags_imacros(args):
+    """Prefix execroot-relative paths in -imacros arguments with ${pwd}."""
+    return _prefix_pwd_to_flag(args, ["-imacros"])
+
+def _pwd_flags_vfsoverlay(args):
+    """Prefix execroot-relative paths in VFS overlay arguments with ${pwd}."""
+    return _prefix_pwd_to_flag(args, ["-ivfsoverlay", "-vfsoverlay=", "-vfsoverlay", "/vfsoverlay:", "/vfsoverlay"])
 
 _DIRECT_LIB_EXTENSIONS = (".a", ".o", ".so", ".dylib")
 
@@ -256,8 +280,28 @@ def _pwd_paths(args):
     """Prefix execroot-relative paths with ${pwd}."""
     return _prefix_pwd_to_paths(args)
 
+_PWD_FLAG_PASSES = [
+    _pwd_flags_sysroot,
+    _pwd_flags_resource_dir,
+    _pwd_flags_B,
+    _pwd_flags_L,
+    _pwd_flags_compiler_response_file,
+    _pwd_flags_isystem,
+    _pwd_flags_fsanitize_ignorelist,
+    _pwd_flags_imacros,
+    _pwd_flags_vfsoverlay,
+    _pwd_flags_direct_libs,
+]
+
 def _pwd_flags(args):
-    return _pwd_flags_direct_libs(_pwd_flags_fsanitize_ignorelist(_pwd_flags_isystem(_pwd_flags_L(_pwd_flags_B(_pwd_flags_resource_dir(_pwd_flags_sysroot(args)))))))
+    clang_cl_prefix = "/clang:"
+    clang_cl_wrapped = [arg.startswith(clang_cl_prefix) for arg in args]
+    args = [arg[len(clang_cl_prefix):] if clang_cl_wrapped[i] else arg for i, arg in enumerate(args)]
+
+    for pwd_flags_pass in _PWD_FLAG_PASSES:
+        args = pwd_flags_pass(args)
+
+    return [clang_cl_prefix + arg if clang_cl_wrapped[i] else arg for i, arg in enumerate(args)]
 
 def _feature_enabled(ctx, feature_name, default = False):
     """Check if a feature is enabled.
@@ -281,6 +325,24 @@ def _feature_enabled(ctx, feature_name, default = False):
         return True
 
     return default
+
+def _resolve_tristate(attr_value, default_flag_target):
+    """Resolve a tri-state `int` attribute (`-1`/`0`/`1`) to a `bool`.
+
+    `-1` defers to the `BuildSettingInfo` on `default_flag_target`; any other
+    value is treated as truthy/falsy directly.
+
+    Args:
+        attr_value (int): The tri-state attribute value (`-1`, `0`, or `1`).
+        default_flag_target (Target): The `bool_flag` target providing the
+            default when `attr_value` is `-1`.
+
+    Returns:
+        bool: The resolved value.
+    """
+    if attr_value == -1:
+        return default_flag_target[BuildSettingInfo].value
+    return bool(attr_value)
 
 def _rlocationpath(file, workspace_name):
     if file.short_path.startswith("../"):
@@ -353,6 +415,8 @@ def _cargo_build_script_impl(ctx):
     flags_out = ctx.actions.declare_file(ctx.label.name + ".flags")
     link_flags = ctx.actions.declare_file(ctx.label.name + ".linkflags")
     link_search_paths = ctx.actions.declare_file(ctx.label.name + ".linksearchpaths")  # rustc-link-search, propagated from transitive dependencies
+    cdylib_link_flags = ctx.actions.declare_file(ctx.label.name + ".cdyliblinkflags")  # rustc-cdylib-link-arg, applied to cdylib crates (incl. transitively)
+    bin_link_flags = ctx.actions.declare_file(ctx.label.name + ".binlinkflags")  # rustc-link-arg-bins, applied to binary crates
     compilation_mode_opt_level = get_compilation_mode_opts(ctx, toolchain).opt_level
 
     script_data = []
@@ -382,24 +446,26 @@ def _cargo_build_script_impl(ctx):
     if pkg_name == "":
         pkg_name = name_to_pkg_name(ctx.label.name)
 
-    toolchain_tools = [toolchain.all_files]
+    cargo = find_cargo(ctx, toolchain)
+    mismatch = cargo_version_mismatch(cargo.toolchain, toolchain)
+    if mismatch:
+        fail("{}: {}".format(ctx.label, mismatch))
+    toolchain_tools = [toolchain.all_files, cargo.files]
 
     env = {}
 
-    if ctx.attr.use_default_shell_env == -1:
-        use_default_shell_env = ctx.attr._default_use_default_shell_env[BuildSettingInfo].value
-    elif ctx.attr.use_default_shell_env == 0:
-        use_default_shell_env = False
-    else:
-        use_default_shell_env = True
+    use_default_shell_env = _resolve_tristate(
+        ctx.attr.use_default_shell_env,
+        ctx.attr._default_use_default_shell_env,
+    )
 
     # If enabled, start with the default shell env, which contains any --action_env
     # settings passed in on the command line and defaults like $PATH.
     if use_default_shell_env:
         env.update(ctx.configuration.default_shell_env)
 
-    if toolchain.cargo:
-        env["CARGO"] = "${pwd}/%s" % toolchain.cargo.path
+    if cargo.cargo:
+        env["CARGO"] = "${pwd}/%s" % cargo.cargo.path
 
     env.update({
         "CARGO_CRATE_NAME": name_to_crate_name(pkg_name),
@@ -429,9 +495,17 @@ def _cargo_build_script_impl(ctx):
         env["CARGO_PKG_VERSION_PRE"] = patch[1] if len(patch) > 1 else ""
         env["CARGO_PKG_VERSION"] = ctx.attr.version
 
+    use_cc_toolchain = _resolve_tristate(
+        ctx.attr.use_cc_toolchain,
+        ctx.attr._default_use_cc_toolchain,
+    )
+
     # Pull in env vars which may be required for the cc_toolchain to work (e.g. on OSX, the SDK version).
     # We hope that the linker env is sufficient for the whole cc_toolchain.
-    cc_toolchain, feature_configuration = find_cc_toolchain(ctx)
+    if use_cc_toolchain:
+        cc_toolchain, feature_configuration = find_cc_toolchain(ctx)
+    else:
+        cc_toolchain, feature_configuration = None, None
     linker, _, link_args, linker_env = get_linker_and_args(ctx, "bin", toolchain, cc_toolchain, feature_configuration, None)
     env.update(**linker_env)
     env["LD"] = linker
@@ -500,6 +574,8 @@ def _cargo_build_script_impl(ctx):
     env["CARGO_ENCODED_RUSTFLAGS"] = "\\x1f".join([
         # Allow build scripts to locate the generated sysroot
         "--sysroot=${{pwd}}/{}".format(toolchain.sysroot),
+        # Keep build scripts from baking the exec root into their output
+        "--remap-path-prefix=${pwd}=.",
     ] + ctx.attr.rustc_flags)
 
     for f in ctx.attr.crate_features:
@@ -567,6 +643,8 @@ def _cargo_build_script_impl(ctx):
     args.add(flags_out, format = "--flags_out=%s")
     args.add(link_flags, format = "--link_flags=%s")
     args.add(link_search_paths, format = "--link_search_paths=%s")
+    args.add(cdylib_link_flags, format = "--cdylib_link_flags=%s")
+    args.add(bin_link_flags, format = "--bin_link_flags=%s")
     args.add(dep_env_out, format = "--dep_env_out=%s")
     args.add(ctx.attr.rundir, format = "--rundir=%s")
 
@@ -641,6 +719,8 @@ def _cargo_build_script_impl(ctx):
             flags_out,
             link_flags,
             link_search_paths,
+            cdylib_link_flags,
+            bin_link_flags,
             dep_env_out,
             runfiles_dir,
         ] + extra_output,
@@ -668,6 +748,8 @@ def _cargo_build_script_impl(ctx):
             flags = flags_out,
             linker_flags = link_flags,
             link_search_paths = link_search_paths,
+            cdylib_link_flags = cdylib_link_flags,
+            bin_link_flags = bin_link_flags,
             compile_data = depset([runfiles_dir] + extra_output, transitive = script_data),
         ),
         OutputGroupInfo(
@@ -780,6 +862,31 @@ cargo_build_script = rule(
             allow_files = True,
             cfg = "exec",
         ),
+        "use_cc_toolchain": attr.int(
+            doc = dedent("""\
+                Whether or not to pull in the resolved `cc_toolchain` when
+                running the build script.
+
+                When enabled, the resolved `cc_toolchain`'s `all_files` are
+                added to the action inputs and the `CC`, `CXX`, `AR`,
+                `CFLAGS`, `CXXFLAGS`, `LDFLAGS`, and `INCLUDE` environment
+                variables are populated from that toolchain (matching Cargo's
+                normal behavior).
+
+                When disabled, the `cc_toolchain` is not requested for the
+                build script action. This can significantly shrink the input
+                trees of `cargo_build_script` actions (particularly with
+                hermetic sysroots) but breaks any build script that needs to
+                compile C/C++ code.
+
+                Unset (`-1`, the default) defers to the
+                `@rules_rust//cargo/settings:use_cc_toolchain` build setting
+                which itself defaults to enabled. Set to `1` to force enable
+                or `0` to force disable for a specific target.
+            """),
+            default = -1,
+            values = [-1, 0, 1],
+        ),
         "use_default_shell_env": attr.int(
             doc = dedent("""\
                 Whether or not to include the default shell environment for the build
@@ -803,6 +910,9 @@ cargo_build_script = rule(
         ),
         "_debug_std_streams_output_group": attr.label(
             default = Label("//cargo/settings:debug_std_streams_output_group"),
+        ),
+        "_default_use_cc_toolchain": attr.label(
+            default = Label("//cargo/settings:use_cc_toolchain"),
         ),
         "_default_use_default_shell_env": attr.label(
             default = Label("//cargo/settings:use_default_shell_env"),
@@ -837,9 +947,9 @@ cargo_build_script = rule(
     },
     fragments = ["cpp"],
     toolchains = [
-        str(Label("//rust:toolchain_type")),
-        config_common.toolchain_type("@bazel_tools//tools/cpp:toolchain_type", mandatory = False),
-    ],
+        config_common.toolchain_type(rust_common.toolchain_type, mandatory = True),
+        config_common.toolchain_type(rust_common.cargo_toolchain_type, mandatory = False),
+    ] + use_cc_toolchain(mandatory = False),
 )
 
 def _merge_env_dict(prefix_dict, suffix_dict):

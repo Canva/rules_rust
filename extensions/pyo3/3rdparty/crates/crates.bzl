@@ -319,9 +319,9 @@ _CRATE_EDITIONS = {
 _NORMAL_DEPENDENCIES = {
     "": {
         _COMMON_CONDITION: {
-            "pyo3": Label("//pyo3-0.29.0"),
-            "pyo3-ffi": Label("//pyo3-ffi-0.29.0"),
-            "pyo3-introspection": Label("//pyo3-introspection-0.29.0"),
+            "pyo3": Label("@rpyo3c//pyo3-0.29.0"),
+            "pyo3-ffi": Label("@rpyo3c//pyo3-ffi-0.29.0"),
+            "pyo3-introspection": Label("@rpyo3c//pyo3-introspection-0.29.0"),
         },
     },
 }
@@ -412,6 +412,7 @@ _CONDITIONS = {
     "powerpc-unknown-linux-gnu": ["@rules_rust//rust/platform:powerpc-unknown-linux-gnu"],
     "riscv32imac-unknown-none-elf": ["@rules_rust//rust/platform:riscv32imac-unknown-none-elf"],
     "riscv32imc-unknown-none-elf": ["@rules_rust//rust/platform:riscv32imc-unknown-none-elf"],
+    "riscv64gc-unknown-fuchsia": ["@rules_rust//rust/platform:riscv64gc-unknown-fuchsia"],
     "riscv64gc-unknown-linux-gnu": ["@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu"],
     "riscv64gc-unknown-none-elf": ["@rules_rust//rust/platform:riscv64gc-unknown-none-elf"],
     "s390x-unknown-linux-gnu": ["@rules_rust//rust/platform:s390x-unknown-linux-gnu"],

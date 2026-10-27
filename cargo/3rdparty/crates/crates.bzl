@@ -320,15 +320,15 @@ _CRATE_EDITIONS = {
 _NORMAL_DEPENDENCIES = {
     "cargo/private/cargo_toml_info": {
         _COMMON_CONDITION: {
-            "cargo_toml": Label("//cargo_toml-0.22.3"),
+            "cargo_toml": Label("@rrc//cargo_toml-0.22.3"),
         },
     },
     "cargo/private/cargo_toml_variable_extractor": {
         _COMMON_CONDITION: {
-            "cargo-util-schemas": Label("//cargo-util-schemas-0.3.1"),
-            "pathdiff": Label("//pathdiff-0.1.0"),
-            "semver": Label("//semver-1.0.25"),
-            "toml": Label("//toml-0.8.20"),
+            "cargo-util-schemas": Label("@rrc//cargo-util-schemas-0.3.1"),
+            "pathdiff": Label("@rrc//pathdiff-0.1.0"),
+            "semver": Label("@rrc//semver-1.0.25"),
+            "toml": Label("@rrc//toml-0.8.20"),
         },
     },
 }
@@ -442,6 +442,7 @@ _CONDITIONS = {
     "powerpc-unknown-linux-gnu": ["@rules_rust//rust/platform:powerpc-unknown-linux-gnu"],
     "riscv32imac-unknown-none-elf": ["@rules_rust//rust/platform:riscv32imac-unknown-none-elf"],
     "riscv32imc-unknown-none-elf": ["@rules_rust//rust/platform:riscv32imc-unknown-none-elf"],
+    "riscv64gc-unknown-fuchsia": ["@rules_rust//rust/platform:riscv64gc-unknown-fuchsia"],
     "riscv64gc-unknown-linux-gnu": ["@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu"],
     "riscv64gc-unknown-none-elf": ["@rules_rust//rust/platform:riscv64gc-unknown-none-elf"],
     "s390x-unknown-linux-gnu": ["@rules_rust//rust/platform:s390x-unknown-linux-gnu"],

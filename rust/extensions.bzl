@@ -42,6 +42,9 @@ def _empty_repository_impl(repository_ctx):
         repository_ctx.name,
     ))
     repository_ctx.file("BUILD.bazel", "")
+    if hasattr(repository_ctx, "repo_metadata"):
+        return repository_ctx.repo_metadata(reproducible = True)
+    return None
 
 _empty_repository = repository_rule(
     doc = "Declare an empty repository.",
@@ -64,6 +67,7 @@ def _rust_impl(module_ctx):
                 "auth": repository_set.auth if repository_set.auth else None,
                 "auth_patterns": repository_set.auth_patterns if repository_set.auth_patterns else None,
                 "dev_components": repository_set.dev_components,
+                "dlltool": str(repository_set.dlltool) if repository_set.dlltool else None,
                 "edition": repository_set.edition,
                 "exec_compatible_with": [str(v) for v in repository_set.exec_compatible_with] if repository_set.exec_compatible_with else None,
                 "exec_triple": repository_set.exec_triple,
@@ -123,6 +127,7 @@ def _rust_impl(module_ctx):
             # so that the `register_toolchains()` in MODULES.bazel is still
             # valid.
             _empty_repository(name = "rust_toolchains")
+
         else:
             extra_rustc_flags = toolchain.extra_rustc_flags if toolchain.extra_rustc_flags else toolchain.extra_rustc_flags_triples
             extra_exec_rustc_flags = toolchain.extra_exec_rustc_flags if toolchain.extra_rustc_flags else toolchain.extra_exec_rustc_flags_triples
@@ -135,6 +140,7 @@ def _rust_impl(module_ctx):
                 extra_exec_rustc_flags = extra_exec_rustc_flags,
                 allocator_library = str(toolchain.allocator_library) if toolchain.allocator_library else None,
                 global_allocator_library = str(toolchain.global_allocator_library) if toolchain.global_allocator_library else None,
+                dlltool = str(toolchain.dlltool) if toolchain.dlltool else None,
                 rustfmt_version = toolchain.rustfmt_version,
                 rust_analyzer_version = toolchain.rust_analyzer_version,
                 sha256s = toolchain.sha256s,
@@ -168,9 +174,12 @@ _COMMON_TAG_KWARGS = {
         doc = "Whether to download the rustc-dev components (defaults to False). Requires version to be \"nightly\".",
         default = False,
     ),
+    "dlltool": attr.label(
+        doc = "Target that provides the `dlltool` binary used to generate import libraries. Defaults to the `dlltool.exe` shipped in `rust-mingw` when both the exec and target triples are `*-pc-windows-gnu`. See `rust_toolchain.dlltool`.",
+    ),
     "edition": attr.string(
         doc = (
-            "The rust edition to be used by default (2015, 2018, or 2021). " +
+            "The rust edition to be used by default (2015, 2018, 2021, or 2024). " +
             "If absent, every rule is required to specify its `edition` attribute."
         ),
     ),
@@ -269,6 +278,7 @@ _RUST_TOOLCHAIN_TAG = tag_class(
             doc = "Extra flags to pass to rustc in non-exec configuration. Key is the triple, value is the flag.",
         ),
         "extra_target_triples": attr.string_list(
+            doc = "Additional Rust target triples to fetch and register toolchains for.",
             default = DEFAULT_EXTRA_TARGET_TRIPLES,
         ),
         "opt_level": attr.string_dict(

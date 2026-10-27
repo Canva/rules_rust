@@ -1,6 +1,8 @@
 """Unittest to verify properties of rustdoc rules"""
 
+load("@bazel_features//:features.bzl", "bazel_features")
 load("@bazel_skylib//lib:unittest.bzl", "analysistest", "asserts")
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//cargo:defs.bzl", "cargo_build_script")
 load(
@@ -196,6 +198,65 @@ rustdoc_with_json_error_format_test = analysistest.make(_rustdoc_with_json_error
 })
 rustdoc_test_uses_cc_library_native_lib_test = analysistest.make(_rustdoc_test_uses_cc_library_native_lib_test_impl)
 
+def _compiled_runner_file(target):
+    executable = target[DefaultInfo].files_to_run.executable
+    action = [action for action in target.actions if executable in action.outputs.to_list()][0]
+    return action.inputs.to_list()[0]
+
+def _compiled_runner_test_impl(ctx):
+    env = analysistest.begin(ctx)
+    target = analysistest.target_under_test(env)
+    runner = _compiled_runner_file(target)
+    executable = target[DefaultInfo].files_to_run.executable
+
+    asserts.true(env, any([action.mnemonic == "RustdocTestCompile" for action in target.actions]))
+    asserts.equals(env, runner.extension, executable.extension)
+    return analysistest.end(env)
+
+compiled_runner_test = analysistest.make(
+    _compiled_runner_test_impl,
+)
+
+def _compiled_runner_platform_test_impl(ctx):
+    env = analysistest.begin(ctx)
+    target = analysistest.target_under_test(env)
+    runner = _compiled_runner_file(target)
+    asserts.true(
+        env,
+        runner.path.startswith("bazel-out/macos_x86_64-"),
+        "Expected the test-platform runner, got {}".format(runner.path),
+    )
+    return analysistest.end(env)
+
+compiled_runner_platform_test = analysistest.make(
+    _compiled_runner_platform_test_impl,
+    config_settings = {
+        "//command_line_option:extra_execution_platforms": [
+            str(Label(":macos_aarch64")),
+            str(Label(":macos_x86_64")),
+        ],
+        "//command_line_option:platforms": str(Label(":macos_x86_64")),
+    },
+)
+
+def _legacy_cross_build_test_impl(ctx):
+    env = analysistest.begin(ctx)
+    asserts.expect_failure(env, "Cross-built doctests require experimental_compile_rustdoc_tests")
+    return analysistest.end(env)
+
+legacy_cross_build_test = analysistest.make(
+    _legacy_cross_build_test_impl,
+    expect_failure = True,
+    config_settings = {
+        "//command_line_option:extra_execution_platforms": [
+            str(Label(":macos_aarch64")),
+            str(Label(":macos_x86_64")),
+        ],
+        "//command_line_option:platforms": str(Label(":macos_x86_64")),
+        str(Label("//rust/settings:experimental_compile_rustdoc_tests")): False,
+    },
+)
+
 def _target_maker(rule_fn, name, rustdoc_deps = [], rustdoc_proc_macro_deps = [], **kwargs):
     rule_fn(
         name = name,
@@ -222,11 +283,51 @@ def _target_maker(rule_fn, name, rustdoc_deps = [], rustdoc_proc_macro_deps = []
         target_compatible_with = NOT_WINDOWS,
     )
 
+def _rustdoc_for_generated_root_test_impl(ctx):
+    env = analysistest.begin(ctx)
+    tut = analysistest.target_under_test(env)
+
+    _common_rustdoc_checks(env, tut)
+
+    return analysistest.end(env)
+
+rustdoc_for_generated_root_test = analysistest.make(_rustdoc_for_generated_root_test_impl)
+
 def _define_targets():
     rust_library(
         name = "adder",
         srcs = ["adder.rs"],
         edition = "2018",
+    )
+
+    write_file(
+        name = "gen_lib_src",
+        out = "gen_lib.rs",
+        content = [
+            "/// One.",
+            "/// ```",
+            "/// assert_eq!(1, 1);",
+            "/// ```",
+            "pub fn one() -> u32 { 1 }",
+            "",
+        ],
+    )
+
+    rust_library(
+        name = "gen_lib",
+        srcs = [":gen_lib.rs"],
+        edition = "2021",
+    )
+
+    rust_doc(
+        name = "gen_lib_doc",
+        crate = ":gen_lib",
+    )
+
+    rust_doc_test(
+        name = "gen_lib_doc_test",
+        crate = ":gen_lib",
+        target_compatible_with = NOT_WINDOWS,
     )
 
     _target_maker(
@@ -314,6 +415,11 @@ def _define_targets():
         name = "cc_lib",
         hdrs = ["rustdoc.h"],
         srcs = ["rustdoc.cc"],
+        # Not instrumented for coverage: doctests link this object into a
+        # rustc-linked binary, and the C compiler's LLVM profile record layout
+        # can differ from rustc's (Apple clang vs. rustc 1.99's LLVM 23), which
+        # crashes the process at exit. See COVERAGE_PROFILE_ABI_MISMATCH.md.
+        features = ["-coverage"],
     )
 
     cc_library(
@@ -423,6 +529,13 @@ def _define_targets():
         target_compatible_with = NOT_WINDOWS,
     )
 
+    rust_doc_test(
+        name = "compiled_runner_fixture",
+        crate = ":lib",
+        deps = [":adder"],
+        tags = ["manual"],
+    )
+
 def rustdoc_test_suite(name):
     """Entry-point macro called from the BUILD file.
 
@@ -492,6 +605,41 @@ def rustdoc_test_suite(name):
         target_under_test = ":lib_with_cc_library_doctest",
     )
 
+    compiled_runner_test(
+        name = "compiled_runner_test",
+        target_compatible_with = select({
+            ":compiled_doctests": [],
+            "//conditions:default": ["@platforms//:incompatible"],
+        }),
+        target_under_test = ":compiled_runner_fixture",
+    )
+
+    compiled_runner_platform_test(
+        name = "compiled_runner_platform_test",
+        target_under_test = ":compiled_runner_fixture",
+        target_compatible_with = [
+            "@platforms//cpu:aarch64",
+            "@platforms//os:macos",
+        ] + ([] if bazel_features.toolchains.has_default_test_toolchain_type else ["@platforms//:incompatible"]) + select({
+            ":compiled_doctests": [],
+            "//conditions:default": ["@platforms//:incompatible"],
+        }),
+    )
+
+    legacy_cross_build_test(
+        name = "legacy_cross_build_test",
+        target_under_test = ":lib_doctest",
+        target_compatible_with = [
+            "@platforms//cpu:aarch64",
+            "@platforms//os:macos",
+        ],
+    )
+
+    rustdoc_for_generated_root_test(
+        name = "rustdoc_for_generated_root_test",
+        target_under_test = ":gen_lib_doc",
+    )
+
     native.filegroup(
         name = "lib_doc_zip",
         srcs = [":lib_doc.zip"],
@@ -516,6 +664,10 @@ def rustdoc_test_suite(name):
             ":rustdoc_with_args_test",
             ":rustdoc_with_json_error_format_test",
             ":rustdoc_test_uses_cc_library_native_lib_test",
+            ":compiled_runner_test",
+            ":compiled_runner_platform_test",
+            ":legacy_cross_build_test",
+            ":rustdoc_for_generated_root_test",
             ":rustdoc_zip_output_test",
         ],
     )

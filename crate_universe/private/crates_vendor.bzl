@@ -1,8 +1,10 @@
 """Rules for vendoring Bazel targets into existing workspaces"""
 
+load("//cargo:cargo_toolchain.bzl", "cargo_version_mismatch", "find_cargo")
 load("//crate_universe/private:generate_utils.bzl", "compile_config", generate_render_config = "render_config")
 load("//crate_universe/private:splicing_utils.bzl", "kebab_case_keys", generate_splicing_config = "splicing_config")
 load("//crate_universe/private:urls.bzl", "CARGO_BAZEL_LABEL")
+load("//rust:defs.bzl", "rust_common")
 load("//rust/platform:triple_mappings.bzl", "SUPPORTED_PLATFORM_TRIPLES")
 
 _UNIX_WRAPPER = """\
@@ -293,7 +295,7 @@ def generate_config_file(
         mode (str): The vendoring mode.
         annotations: Any annotations provided.
         generate_binaries (bool): Whether to generate binaries for the crates.
-        generate_build_scripts (bool): Whether to generate BUILD.bazel files.
+        generate_build_scripts (bool): Whether to generate `cargo_build_script` targets for crates that have build scripts.
         generate_target_compatible_with (bool): DEPRECATED: Moved to `render_config`.
         supported_platform_triples (str): The platform triples to support in
             the generated BUILD.bazel files.
@@ -388,10 +390,16 @@ def generate_config_file(
 
 def _crates_vendor_impl(ctx):
     toolchain = ctx.toolchains[Label("@rules_rust//rust:toolchain_type")]
+    cargo = find_cargo(ctx, toolchain)
+    if not cargo.cargo:
+        fail("{}: no `cargo_toolchain` is registered for the current platform and the `rust_toolchain` has no `cargo`".format(ctx.label))
+    mismatch = cargo_version_mismatch(cargo.toolchain, toolchain)
+    if mismatch:
+        fail("{}: {}".format(ctx.label, mismatch))
     is_windows = _is_windows(ctx)
 
     environ = [
-        _sys_runfile_env(ctx, "CARGO", toolchain.cargo, is_windows),
+        _sys_runfile_env(ctx, "CARGO", cargo.cargo, is_windows),
         _sys_runfile_env(ctx, "RUSTC", toolchain.rustc, is_windows),
     ]
 
@@ -467,7 +475,10 @@ def _crates_vendor_impl(ctx):
         is_executable = True,
     )
 
-    runfiles = ctx.runfiles(files = cargo_bazel_runfiles, transitive_files = toolchain.all_files)
+    runfiles = ctx.runfiles(
+        files = cargo_bazel_runfiles,
+        transitive_files = depset(transitive = [toolchain.all_files, cargo.files]),
+    )
     if runner.basename.endswith(".sh"):
         runfiles = runfiles.merge(ctx.attr._bash_runfiles[DefaultInfo].default_runfiles)
 
@@ -572,7 +583,7 @@ CRATES_VENDOR_ATTRS = {
     ),
     "splicing_config": attr.string(
         doc = (
-            "The configuration flags to use for splicing Cargo manifests. Use `//crate_universe:defs.bzl\\%rsplicing_config` to " +
+            "The configuration flags to use for splicing Cargo manifests. Use `//crate_universe:defs.bzl\\%splicing_config` to " +
             "generate the value for this field. If unset, the defaults defined there will be used."
         ),
     ),
@@ -667,7 +678,10 @@ call against the generated workspace. The following table describes how to contr
 """,
     attrs = CRATES_VENDOR_ATTRS,
     executable = True,
-    toolchains = ["@rules_rust//rust:toolchain_type"],
+    toolchains = [
+        "@rules_rust//rust:toolchain_type",
+        config_common.toolchain_type(rust_common.cargo_toolchain_type, mandatory = False),
+    ],
 )
 
 def _resolve_vendor_files(repository_ctx):
@@ -745,6 +759,9 @@ def _crates_vendor_remote_repository_impl(repository_ctx):
     repository_ctx.file("WORKSPACE.bazel", """workspace(name = "{}")""".format(
         repository_ctx.name,
     ))
+    if hasattr(repository_ctx, "repo_metadata"):
+        return repository_ctx.repo_metadata(reproducible = True)
+    return None
 
 crates_vendor_remote_repository = repository_rule(
     doc = (

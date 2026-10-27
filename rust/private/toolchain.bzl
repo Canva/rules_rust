@@ -4,6 +4,7 @@ Toolchain rules for Rust.
 """
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("@rules_cc//cc:find_cc_toolchain.bzl", "use_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//rust/platform:triple.bzl", "triple")
@@ -120,9 +121,14 @@ rust_stdlib_filegroup = rule(
     },
 )
 
-def _experimental_link_std_dylib(ctx):
+def _resolve_link_std_dylib(ctx):
+    per_toolchain = ctx.attr.link_std_dylib
+    if per_toolchain == -1:
+        enabled = ctx.attr._link_std_dylib_setting[BuildSettingInfo].value
+    else:
+        enabled = bool(per_toolchain)
     return not is_exec_configuration(ctx) and \
-           ctx.attr.experimental_link_std_dylib[BuildSettingInfo].value and \
+           enabled and \
            ctx.attr.rust_std[rust_common.stdlib_info].std_dylib != None
 
 def _symlink_sysroot_tree(ctx, name, target, target_files = None):
@@ -555,32 +561,33 @@ def _rust_toolchain_impl(ctx):
                 ctx.label,
             ))
 
-    experimental_link_std_dylib = _experimental_link_std_dylib(ctx)
-
-    def make_ccinfo(label, actions, allocator_library, std):
+    def make_ccinfo(label, actions, allocator_library, std, link_std_dylib):
         return make_libstd_and_allocator_ccinfo(
             cc_toolchain = cc_toolchain,
             feature_configuration = feature_configuration,
             label = label,
             actions = actions,
-            experimental_link_std_dylib = experimental_link_std_dylib,
+            link_std_dylib = link_std_dylib,
             rust_std = rust_std,
             allocator_library = allocator_library,
             std = std,
         )
 
-    def make_local_ccinfo(allocator_library, std):
+    def make_local_ccinfo(allocator_library, std, link_std_dylib):
         return make_ccinfo(
             ctx.label,
             ctx.actions,
             struct(cc_info = allocator_library),
             std,
+            link_std_dylib,
         )
 
     # Include C++ toolchain files to ensure tools like 'ar' are available for cross-compilation
     all_files_depsets = [sysroot.all_files]
     if cc_toolchain and cc_toolchain.all_files:
         all_files_depsets.append(cc_toolchain.all_files)
+    if ctx.file.dlltool:
+        all_files_depsets.append(depset([ctx.file.dlltool]))
 
     # Parse the version string once so downstream rules can branch on the
     # semver components without re-parsing. `None` for empty or non-semver
@@ -596,13 +603,16 @@ def _rust_toolchain_impl(ctx):
         cargo_clippy = sysroot.cargo_clippy,
         compilation_mode_opts = compilation_mode_opts,
         default_edition = ctx.attr.default_edition,
+        dlltool = ctx.file.dlltool,
         dylib_ext = ctx.attr.dylib_ext,
         env = ctx.attr.env,
         exec_triple = exec_triple,
         iso_date = ctx.attr.iso_date,
-        libstd_and_allocator_ccinfo = make_local_ccinfo(ctx.attr.allocator_library[CcInfo], "std"),
-        libstd_and_global_allocator_ccinfo = make_local_ccinfo(ctx.attr.global_allocator_library[CcInfo], "std"),
-        nostd_and_global_allocator_ccinfo = make_local_ccinfo(ctx.attr.global_allocator_library[CcInfo], "no_std_with_alloc"),
+        libstd_and_allocator_ccinfo = make_local_ccinfo(ctx.attr.allocator_library[CcInfo], "std", False),
+        libstd_and_global_allocator_ccinfo = make_local_ccinfo(ctx.attr.global_allocator_library[CcInfo], "std", False),
+        nostd_and_global_allocator_ccinfo = make_local_ccinfo(ctx.attr.global_allocator_library[CcInfo], "no_std_with_alloc", False),
+        libstd_dylib_and_allocator_ccinfo = make_local_ccinfo(ctx.attr.allocator_library[CcInfo], "std", True),
+        libstd_dylib_and_global_allocator_ccinfo = make_local_ccinfo(ctx.attr.global_allocator_library[CcInfo], "std", True),
         make_libstd_and_allocator_ccinfo = make_ccinfo,
         linker = sysroot.linker,
         linker_preference = linker_preference,
@@ -616,6 +626,7 @@ def _rust_toolchain_impl(ctx):
         make_variables = make_variable_info,
         rust_doc = sysroot.rustdoc,
         rust_std = sysroot.rust_std,
+        rust_std_dylib = ctx.attr.rust_std[rust_common.stdlib_info].std_dylib,
         rust_std_paths = depset([file.dirname for file in sysroot.rust_std.to_list()]),
         rustc = sysroot.rustc,
         rustc_lib = sysroot.rustc_lib,
@@ -643,10 +654,11 @@ def _rust_toolchain_impl(ctx):
         _rename_first_party_crates = rename_first_party_crates,
         _third_party_dir = third_party_dir,
         _pipelined_compilation = pipelined_compilation,
-        _experimental_link_std_dylib = _experimental_link_std_dylib(ctx),
+        _link_std_dylib = _resolve_link_std_dylib(ctx),
         _experimental_use_cc_common_link = _experimental_use_cc_common_link(ctx),
         _experimental_use_global_allocator = experimental_use_global_allocator,
         _experimental_compile_rustdoc_tests = ctx.attr._experimental_compile_rustdoc_tests[BuildSettingInfo].value,
+        _skip_fission_for_rust = ctx.attr._skip_fission_for_rust[BuildSettingInfo].value,
         _experimental_use_coverage_metadata_files = ctx.attr._experimental_use_coverage_metadata_files[BuildSettingInfo].value,
         _toolchain_generated_sysroot = ctx.attr._toolchain_generated_sysroot[BuildSettingInfo].value,
         _incompatible_do_not_include_data_in_compile_data = ctx.attr._incompatible_do_not_include_data_in_compile_data[IncompatibleFlagInfo].enabled,
@@ -674,7 +686,12 @@ rust_toolchain = rule(
             mandatory = True,
         ),
         "cargo": attr.label(
-            doc = "The location of the `cargo` binary. Can be a direct source or a filegroup containing one item.",
+            doc = (
+                "The location of the `cargo` binary. Can be a direct source or a filegroup containing one item. " +
+                "**Deprecated**: register a [`cargo_toolchain`](#cargo_toolchain) for " +
+                "`@rules_rust//cargo:toolchain_type` instead. Rules which run Cargo use that toolchain " +
+                "when one is registered and fall back to this attribute when none is."
+            ),
             allow_single_file = True,
             cfg = "exec",
         ),
@@ -693,7 +710,7 @@ rust_toolchain = rule(
             cfg = "exec",
         ),
         "debug_info": attr.string_dict(
-            doc = "Rustc debug info levels per opt level",
+            doc = "Rustc debug info levels per compilation mode (keyed by `dbg`, `fastbuild`, `opt`).",
             default = {
                 "dbg": "2",
                 "fastbuild": "0",
@@ -705,6 +722,15 @@ rust_toolchain = rule(
                 "The edition to use for rust_* rules that don't specify an edition. " +
                 "If absent, every rule is required to specify its `edition` attribute."
             ),
+        ),
+        "dlltool": attr.label(
+            doc = (
+                "The `dlltool` binary rustc uses to generate import libraries. " +
+                "If unset, it is derived from the `cc_toolchain`'s linker path, " +
+                "which assumes a MinGW binutils layout."
+            ),
+            allow_single_file = True,
+            cfg = "exec",
         ),
         "dylib_ext": attr.string(
             doc = "The extension for dynamic libraries created from rustc.",
@@ -719,10 +745,6 @@ rust_toolchain = rule(
                 "For more details see: https://docs.bazel.build/versions/master/skylark/rules.html#configurations"
             ),
             mandatory = True,
-        ),
-        "experimental_link_std_dylib": attr.label(
-            default = Label("@rules_rust//rust/settings:experimental_link_std_dylib"),
-            doc = "Label to a boolean build setting that controls whether whether to link libstd dynamically.",
         ),
         "experimental_use_allocator_libraries_with_mangled_symbols": attr.int(
             doc = (
@@ -757,6 +779,17 @@ rust_toolchain = rule(
         "iso_date": attr.string(
             doc = "The ISO date of the nightly or beta release (e.g. `2026-03-26`). Empty for stable releases.",
             default = "",
+        ),
+        "link_std_dylib": attr.int(
+            doc = (
+                "Whether to link libstd dynamically. Possible values: [-1, 0, 1]. " +
+                "-1 means to use the value of the build setting " +
+                "`@rules_rust//rust/settings:experimental_link_std_dylib`. " +
+                "0 means do not link libstd dynamically. " +
+                "1 means link libstd dynamically."
+            ),
+            values = [-1, 0, 1],
+            default = -1,
         ),
         "linker": attr.label(
             doc = "The label to an explicit linker to use (e.g. rust-lld, ld, link-ld.exe, etc.). Linker binaries must be runnable in the exec configuration, so cfg = \"exec\" is used. To choose a linker based on the target platform, use a select() when providing this attribute. The select() will be evaluated against the target platform before the exec transition is applied, allowing platform-specific linker selection while ensuring the selected linker is built for the exec platform.",
@@ -793,7 +826,10 @@ rust_toolchain = rule(
         "lto": attr.label(
             providers = [RustLtoInfo],
             default = Label("//rust/settings:lto"),
-            doc = "Label to an LTO setting whether which can enable custom LTO settings",
+            doc = (
+                "A `rust_lto_flag` target that sets the link time optimization mode " +
+                "for crates built with this toolchain."
+            ),
         ),
         "opt_level": attr.string_dict(
             doc = "Rustc optimization levels.",
@@ -913,6 +949,10 @@ rust_toolchain = rule(
             default = Label("//rust/settings:incompatible_do_not_include_transitive_data_in_compile_inputs"),
             doc = "Label to a boolean build setting that controls whether to include transitive data dependencies in compile inputs.",
         ),
+        "_link_std_dylib_setting": attr.label(
+            default = Label("@rules_rust//rust/settings:experimental_link_std_dylib"),
+            doc = "Label to a boolean build setting that controls whether to link libstd dynamically.",
+        ),
         "_linker_preference": attr.label(
             default = Label("//rust/settings:toolchain_linker_preference"),
         ),
@@ -925,6 +965,9 @@ rust_toolchain = rule(
         "_rename_first_party_crates": attr.label(
             default = Label("//rust/settings:rename_first_party_crates"),
         ),
+        "_skip_fission_for_rust": attr.label(
+            default = Label("//rust/settings:skip_fission_for_rust"),
+        ),
         "_third_party_dir": attr.label(
             default = Label("//rust/settings:third_party_dir"),
         ),
@@ -936,9 +979,7 @@ rust_toolchain = rule(
             ),
         ),
     },
-    toolchains = [
-        config_common.toolchain_type("@bazel_tools//tools/cpp:toolchain_type", mandatory = False),
-    ],
+    toolchains = use_cc_toolchain(mandatory = False),
     doc = """Declares a Rust toolchain for use.
 
 This is for declaring a custom toolchain, eg. for configuring a particular version of rust or supporting a new platform.

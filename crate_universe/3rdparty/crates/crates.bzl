@@ -321,51 +321,51 @@ _CRATE_EDITIONS = {
 _NORMAL_DEPENDENCIES = {
     "crate_universe": {
         _COMMON_CONDITION: {
-            "anyhow": Label("//anyhow-1.0.98"),
-            "camino": Label("//camino-1.1.9"),
-            "cargo-lock": Label("//cargo-lock-10.1.0"),
-            "cargo-platform": Label("//cargo-platform-0.1.9"),
-            "cargo_metadata": Label("//cargo_metadata-0.19.2"),
-            "cargo_toml": Label("//cargo_toml-0.22.3"),
-            "cfg-expr": Label("//cfg-expr-0.18.0"),
-            "clap": Label("//clap-4.5.37"),
-            "crates-index": Label("//crates-index-3.7.0"),
-            "glob": Label("//glob-0.3.2"),
-            "hex": Label("//hex-0.4.3"),
-            "itertools": Label("//itertools-0.14.0"),
-            "normpath": Label("//normpath-1.3.0"),
-            "once_cell": Label("//once_cell-1.21.3"),
-            "pathdiff": Label("//pathdiff-0.2.3"),
-            "regex": Label("//regex-1.11.1"),
-            "reqwest": Label("//reqwest-0.13.4"),
-            "rustls": Label("//rustls-0.23.41"),
-            "semver": Label("//semver-1.0.26"),
-            "serde": Label("//serde-1.0.219"),
-            "serde_json": Label("//serde_json-1.0.140"),
-            "serde_starlark": Label("//serde_starlark-0.1.17"),
-            "sha2": Label("//sha2-0.10.8"),
-            "spdx": Label("//spdx-0.10.8"),
-            "tempfile": Label("//tempfile-3.19.1"),
-            "tera": Label("//tera-1.20.0"),
-            "textwrap": Label("//textwrap-0.16.2"),
-            "toml": Label("//toml-0.9.5"),
-            "tracing": Label("//tracing-0.1.41"),
-            "tracing-subscriber": Label("//tracing-subscriber-0.3.19"),
-            "url": Label("//url-2.5.4"),
-            "walkdir": Label("//walkdir-2.5.0"),
+            "anyhow": Label("@cui//anyhow-1.0.98"),
+            "camino": Label("@cui//camino-1.1.9"),
+            "cargo-lock": Label("@cui//cargo-lock-11.1.0"),
+            "cargo-platform": Label("@cui//cargo-platform-0.1.9"),
+            "cargo_metadata": Label("@cui//cargo_metadata-0.19.2"),
+            "cargo_toml": Label("@cui//cargo_toml-0.22.3"),
+            "cfg-expr": Label("@cui//cfg-expr-0.18.0"),
+            "clap": Label("@cui//clap-4.5.37"),
+            "crates-index": Label("@cui//crates-index-3.7.0"),
+            "glob": Label("@cui//glob-0.3.2"),
+            "hex": Label("@cui//hex-0.4.3"),
+            "itertools": Label("@cui//itertools-0.14.0"),
+            "normpath": Label("@cui//normpath-1.3.0"),
+            "once_cell": Label("@cui//once_cell-1.21.3"),
+            "pathdiff": Label("@cui//pathdiff-0.2.3"),
+            "regex": Label("@cui//regex-1.11.1"),
+            "reqwest": Label("@cui//reqwest-0.13.5"),
+            "rustls": Label("@cui//rustls-0.23.46"),
+            "semver": Label("@cui//semver-1.0.26"),
+            "serde": Label("@cui//serde-1.0.229"),
+            "serde_json": Label("@cui//serde_json-1.0.140"),
+            "serde_starlark": Label("@cui//serde_starlark-0.1.17"),
+            "sha2": Label("@cui//sha2-0.10.8"),
+            "spdx": Label("@cui//spdx-0.10.8"),
+            "tempfile": Label("@cui//tempfile-3.19.1"),
+            "tera": Label("@cui//tera-1.20.0"),
+            "textwrap": Label("@cui//textwrap-0.16.2"),
+            "toml": Label("@cui//toml-0.9.5"),
+            "tracing": Label("@cui//tracing-0.1.41"),
+            "tracing-subscriber": Label("@cui//tracing-subscriber-0.3.19"),
+            "url": Label("@cui//url-2.5.4"),
+            "walkdir": Label("@cui//walkdir-2.5.0"),
         },
     },
     "crate_universe/tools/cross_installer": {
         _COMMON_CONDITION: {
-            "clap": Label("//clap-4.5.37"),
+            "clap": Label("@cui//clap-4.5.37"),
         },
     },
     "crate_universe/tools/urls_generator": {
         _COMMON_CONDITION: {
-            "clap": Label("//clap-4.5.37"),
-            "hex": Label("//hex-0.4.3"),
-            "serde_json": Label("//serde_json-1.0.140"),
-            "sha2": Label("//sha2-0.10.8"),
+            "clap": Label("@cui//clap-4.5.37"),
+            "hex": Label("@cui//hex-0.4.3"),
+            "serde_json": Label("@cui//serde_json-1.0.140"),
+            "sha2": Label("@cui//sha2-0.10.8"),
         },
     },
 }
@@ -388,7 +388,7 @@ _NORMAL_ALIASES = {
 _NORMAL_DEV_DEPENDENCIES = {
     "crate_universe": {
         _COMMON_CONDITION: {
-            "maplit": Label("//maplit-1.0.2"),
+            "maplit": Label("@cui//maplit-1.0.2"),
         },
     },
     "crate_universe/tools/cross_installer": {
@@ -411,7 +411,7 @@ _NORMAL_DEV_ALIASES = {
 _PROC_MACRO_DEPENDENCIES = {
     "crate_universe": {
         _COMMON_CONDITION: {
-            "indoc": Label("//indoc-2.0.6"),
+            "indoc": Label("@cui//indoc-2.0.6"),
         },
     },
     "crate_universe/tools/cross_installer": {
@@ -512,8 +512,8 @@ _CONDITIONS = {
     "cfg(all(any(target_os = \"linux\", target_os = \"android\"), not(any(all(target_os = \"linux\", target_env = \"\"), getrandom_backend = \"custom\", getrandom_backend = \"linux_raw\", getrandom_backend = \"rdrand\", getrandom_backend = \"rndr\"))))": ["@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
     "cfg(all(not(rustix_use_libc), not(miri), target_os = \"linux\", any(target_endian = \"little\", any(target_arch = \"s390x\", target_arch = \"powerpc\")), any(target_arch = \"arm\", all(target_arch = \"aarch64\", target_pointer_width = \"64\"), target_arch = \"riscv64\", all(rustix_use_experimental_asm, target_arch = \"powerpc\"), all(rustix_use_experimental_asm, target_arch = \"powerpc64\"), all(rustix_use_experimental_asm, target_arch = \"s390x\"), all(rustix_use_experimental_asm, target_arch = \"mips\"), all(rustix_use_experimental_asm, target_arch = \"mips32r6\"), all(rustix_use_experimental_asm, target_arch = \"mips64\"), all(rustix_use_experimental_asm, target_arch = \"mips64r6\"), target_arch = \"x86\", all(target_arch = \"x86_64\", target_pointer_width = \"64\"))))": ["@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
     "cfg(all(not(rustix_use_libc), not(miri), target_os = \"linux\", any(target_endian = \"little\", target_arch = \"s390x\"), any(target_arch = \"arm\", all(target_arch = \"aarch64\", target_pointer_width = \"64\"), target_arch = \"riscv64\", all(rustix_use_experimental_asm, target_arch = \"powerpc64\"), all(rustix_use_experimental_asm, target_arch = \"s390x\"), all(rustix_use_experimental_asm, target_arch = \"mips\"), all(rustix_use_experimental_asm, target_arch = \"mips32r6\"), all(rustix_use_experimental_asm, target_arch = \"mips64\"), all(rustix_use_experimental_asm, target_arch = \"mips64r6\"), target_arch = \"x86\", all(target_arch = \"x86_64\", target_pointer_width = \"64\"))))": ["@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
-    "cfg(all(not(windows), any(rustix_use_libc, miri, not(all(target_os = \"linux\", any(target_endian = \"little\", any(target_arch = \"s390x\", target_arch = \"powerpc\")), any(target_arch = \"arm\", all(target_arch = \"aarch64\", target_pointer_width = \"64\"), target_arch = \"riscv64\", all(rustix_use_experimental_asm, target_arch = \"powerpc\"), all(rustix_use_experimental_asm, target_arch = \"powerpc64\"), all(rustix_use_experimental_asm, target_arch = \"s390x\"), all(rustix_use_experimental_asm, target_arch = \"mips\"), all(rustix_use_experimental_asm, target_arch = \"mips32r6\"), all(rustix_use_experimental_asm, target_arch = \"mips64\"), all(rustix_use_experimental_asm, target_arch = \"mips64r6\"), target_arch = \"x86\", all(target_arch = \"x86_64\", target_pointer_width = \"64\")))))))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:thumbv6m-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabihf", "@rules_rust//rust/platform:thumbv7m-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabihf", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-unknown-unknown", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
-    "cfg(all(not(windows), any(rustix_use_libc, miri, not(all(target_os = \"linux\", any(target_endian = \"little\", target_arch = \"s390x\"), any(target_arch = \"arm\", all(target_arch = \"aarch64\", target_pointer_width = \"64\"), target_arch = \"riscv64\", all(rustix_use_experimental_asm, target_arch = \"powerpc64\"), all(rustix_use_experimental_asm, target_arch = \"s390x\"), all(rustix_use_experimental_asm, target_arch = \"mips\"), all(rustix_use_experimental_asm, target_arch = \"mips32r6\"), all(rustix_use_experimental_asm, target_arch = \"mips64\"), all(rustix_use_experimental_asm, target_arch = \"mips64r6\"), target_arch = \"x86\", all(target_arch = \"x86_64\", target_pointer_width = \"64\")))))))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:thumbv6m-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabihf", "@rules_rust//rust/platform:thumbv7m-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabihf", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-unknown-unknown", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
+    "cfg(all(not(windows), any(rustix_use_libc, miri, not(all(target_os = \"linux\", any(target_endian = \"little\", any(target_arch = \"s390x\", target_arch = \"powerpc\")), any(target_arch = \"arm\", all(target_arch = \"aarch64\", target_pointer_width = \"64\"), target_arch = \"riscv64\", all(rustix_use_experimental_asm, target_arch = \"powerpc\"), all(rustix_use_experimental_asm, target_arch = \"powerpc64\"), all(rustix_use_experimental_asm, target_arch = \"s390x\"), all(rustix_use_experimental_asm, target_arch = \"mips\"), all(rustix_use_experimental_asm, target_arch = \"mips32r6\"), all(rustix_use_experimental_asm, target_arch = \"mips64\"), all(rustix_use_experimental_asm, target_arch = \"mips64r6\"), target_arch = \"x86\", all(target_arch = \"x86_64\", target_pointer_width = \"64\")))))))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:thumbv6m-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabihf", "@rules_rust//rust/platform:thumbv7m-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabihf", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-unknown-unknown", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
+    "cfg(all(not(windows), any(rustix_use_libc, miri, not(all(target_os = \"linux\", any(target_endian = \"little\", target_arch = \"s390x\"), any(target_arch = \"arm\", all(target_arch = \"aarch64\", target_pointer_width = \"64\"), target_arch = \"riscv64\", all(rustix_use_experimental_asm, target_arch = \"powerpc64\"), all(rustix_use_experimental_asm, target_arch = \"s390x\"), all(rustix_use_experimental_asm, target_arch = \"mips\"), all(rustix_use_experimental_asm, target_arch = \"mips32r6\"), all(rustix_use_experimental_asm, target_arch = \"mips64\"), all(rustix_use_experimental_asm, target_arch = \"mips64r6\"), target_arch = \"x86\", all(target_arch = \"x86_64\", target_pointer_width = \"64\")))))))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:thumbv6m-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabihf", "@rules_rust//rust/platform:thumbv7m-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabihf", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-unknown-unknown", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
     "cfg(all(target_arch = \"aarch64\", target_env = \"msvc\", not(windows_raw_dylib)))": ["@rules_rust//rust/platform:aarch64-pc-windows-msvc"],
     "cfg(all(target_arch = \"aarch64\", target_os = \"linux\"))": ["@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu"],
     "cfg(all(target_arch = \"aarch64\", target_vendor = \"apple\"))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim"],
@@ -524,9 +524,10 @@ _CONDITIONS = {
     "cfg(all(target_arch = \"x86\", target_env = \"msvc\", not(windows_raw_dylib)))": ["@rules_rust//rust/platform:i686-pc-windows-msvc"],
     "cfg(all(target_arch = \"x86_64\", target_env = \"gnu\", not(target_abi = \"llvm\"), not(windows_raw_dylib)))": ["@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
     "cfg(all(target_arch = \"x86_64\", target_env = \"msvc\", not(windows_raw_dylib)))": ["@rules_rust//rust/platform:x86_64-pc-windows-msvc"],
+    "cfg(all(target_os = \"emscripten\", wasm_bindgen_unstable_tokio))": [],
     "cfg(all(target_os = \"uefi\", getrandom_backend = \"efi_rng\"))": [],
-    "cfg(all(unix, not(target_os = \"android\"), not(target_vendor = \"apple\"), not(target_arch = \"wasm32\")))": ["@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
-    "cfg(all(unix, not(target_os = \"macos\")))": ["@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
+    "cfg(all(unix, not(target_os = \"android\"), not(target_vendor = \"apple\"), not(target_arch = \"wasm32\")))": ["@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
+    "cfg(all(unix, not(target_os = \"macos\")))": ["@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
     "cfg(any())": [],
     "cfg(any(target_arch = \"aarch64\", target_arch = \"x86_64\", target_arch = \"x86\"))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-pc-windows-msvc", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-pc-windows-msvc", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-pc-windows-msvc", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
     "cfg(any(target_os = \"dragonfly\", target_os = \"freebsd\", target_os = \"hurd\", target_os = \"illumos\", target_os = \"cygwin\", all(target_os = \"horizon\", target_arch = \"arm\")))": ["@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-freebsd"],
@@ -534,11 +535,11 @@ _CONDITIONS = {
     "cfg(any(target_os = \"ios\", target_os = \"visionos\", target_os = \"watchos\", target_os = \"tvos\"))": ["@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi"],
     "cfg(any(target_os = \"macos\", target_os = \"openbsd\", target_os = \"vita\", target_os = \"emscripten\"))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:x86_64-apple-darwin"],
     "cfg(any(target_vendor = \"apple\"))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi"],
-    "cfg(any(unix, target_os = \"wasi\"))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
-    "cfg(not(all(target_arch = \"arm\", target_os = \"none\")))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-pc-windows-msvc", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-pc-windows-msvc", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-unknown-unknown", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-pc-windows-msvc", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
-    "cfg(not(all(target_arch = \"wasm32\", any(target_os = \"unknown\", target_os = \"none\"))))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-pc-windows-msvc", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-pc-windows-msvc", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:thumbv6m-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabihf", "@rules_rust//rust/platform:thumbv7m-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabihf", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-pc-windows-msvc", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
-    "cfg(not(target_family = \"wasm\"))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-pc-windows-msvc", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-pc-windows-msvc", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:thumbv6m-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabihf", "@rules_rust//rust/platform:thumbv7m-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabihf", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-pc-windows-msvc", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
-    "cfg(not(windows))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:thumbv6m-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabihf", "@rules_rust//rust/platform:thumbv7m-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabihf", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-unknown-unknown", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
+    "cfg(any(unix, target_os = \"wasi\"))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
+    "cfg(not(all(target_arch = \"arm\", target_os = \"none\")))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-pc-windows-msvc", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-pc-windows-msvc", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-unknown-unknown", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-pc-windows-msvc", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
+    "cfg(not(all(target_arch = \"wasm32\", any(target_os = \"unknown\", target_os = \"none\"))))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-pc-windows-msvc", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-pc-windows-msvc", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:thumbv6m-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabihf", "@rules_rust//rust/platform:thumbv7m-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabihf", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-pc-windows-msvc", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
+    "cfg(not(target_family = \"wasm\"))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-pc-windows-msvc", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-pc-windows-msvc", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:thumbv6m-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabihf", "@rules_rust//rust/platform:thumbv7m-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabihf", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-pc-windows-msvc", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
+    "cfg(not(windows))": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-none", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:aarch64-unknown-uefi", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv32imac-unknown-none-elf", "@rules_rust//rust/platform:riscv32imc-unknown-none-elf", "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-none-elf", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:thumbv6m-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabi", "@rules_rust//rust/platform:thumbv7em-none-eabihf", "@rules_rust//rust/platform:thumbv7m-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabi", "@rules_rust//rust/platform:thumbv8m.main-none-eabihf", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-unknown-unknown", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu", "@rules_rust//rust/platform:x86_64-unknown-none", "@rules_rust//rust/platform:x86_64-unknown-uefi"],
     "cfg(target_arch = \"wasm32\")": ["@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:wasm32-unknown-unknown", "@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2"],
     "cfg(target_os = \"android\")": ["@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:x86_64-linux-android"],
     "cfg(target_os = \"hermit\")": [],
@@ -549,7 +550,7 @@ _CONDITIONS = {
     "cfg(target_os = \"vxworks\")": [],
     "cfg(target_os = \"wasi\")": ["@rules_rust//rust/platform:wasm32-wasip1", "@rules_rust//rust/platform:wasm32-wasip1-threads", "@rules_rust//rust/platform:wasm32-wasip2"],
     "cfg(target_os = \"windows\")": ["@rules_rust//rust/platform:aarch64-pc-windows-msvc", "@rules_rust//rust/platform:i686-pc-windows-msvc", "@rules_rust//rust/platform:x86_64-pc-windows-msvc"],
-    "cfg(unix)": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
+    "cfg(unix)": ["@rules_rust//rust/platform:aarch64-apple-darwin", "@rules_rust//rust/platform:aarch64-apple-ios", "@rules_rust//rust/platform:aarch64-apple-ios-macabi", "@rules_rust//rust/platform:aarch64-apple-ios-sim", "@rules_rust//rust/platform:aarch64-linux-android", "@rules_rust//rust/platform:aarch64-unknown-fuchsia", "@rules_rust//rust/platform:aarch64-unknown-linux-gnu", "@rules_rust//rust/platform:aarch64-unknown-nixos-gnu", "@rules_rust//rust/platform:aarch64-unknown-nto-qnx710", "@rules_rust//rust/platform:arm-unknown-linux-gnueabi", "@rules_rust//rust/platform:arm-unknown-linux-musleabi", "@rules_rust//rust/platform:armv7-linux-androideabi", "@rules_rust//rust/platform:armv7-unknown-linux-gnueabi", "@rules_rust//rust/platform:i686-apple-darwin", "@rules_rust//rust/platform:i686-linux-android", "@rules_rust//rust/platform:i686-unknown-freebsd", "@rules_rust//rust/platform:i686-unknown-linux-gnu", "@rules_rust//rust/platform:loongarch64-unknown-linux-gnu", "@rules_rust//rust/platform:mips-unknown-linux-gnu", "@rules_rust//rust/platform:powerpc-unknown-linux-gnu", "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia", "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu", "@rules_rust//rust/platform:s390x-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-linux-gnu", "@rules_rust//rust/platform:sparc64-unknown-netbsd", "@rules_rust//rust/platform:sparc64-unknown-openbsd", "@rules_rust//rust/platform:wasm32-unknown-emscripten", "@rules_rust//rust/platform:x86_64-apple-darwin", "@rules_rust//rust/platform:x86_64-apple-ios", "@rules_rust//rust/platform:x86_64-apple-ios-macabi", "@rules_rust//rust/platform:x86_64-linux-android", "@rules_rust//rust/platform:x86_64-unknown-freebsd", "@rules_rust//rust/platform:x86_64-unknown-fuchsia", "@rules_rust//rust/platform:x86_64-unknown-linux-gnu", "@rules_rust//rust/platform:x86_64-unknown-nixos-gnu"],
     "cfg(windows)": ["@rules_rust//rust/platform:aarch64-pc-windows-msvc", "@rules_rust//rust/platform:i686-pc-windows-msvc", "@rules_rust//rust/platform:x86_64-pc-windows-msvc"],
     "i686-apple-darwin": ["@rules_rust//rust/platform:i686-apple-darwin"],
     "i686-linux-android": ["@rules_rust//rust/platform:i686-linux-android"],
@@ -563,6 +564,7 @@ _CONDITIONS = {
     "powerpc-unknown-linux-gnu": ["@rules_rust//rust/platform:powerpc-unknown-linux-gnu"],
     "riscv32imac-unknown-none-elf": ["@rules_rust//rust/platform:riscv32imac-unknown-none-elf"],
     "riscv32imc-unknown-none-elf": ["@rules_rust//rust/platform:riscv32imc-unknown-none-elf"],
+    "riscv64gc-unknown-fuchsia": ["@rules_rust//rust/platform:riscv64gc-unknown-fuchsia"],
     "riscv64gc-unknown-linux-gnu": ["@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu"],
     "riscv64gc-unknown-none-elf": ["@rules_rust//rust/platform:riscv64gc-unknown-none-elf"],
     "s390x-unknown-linux-gnu": ["@rules_rust//rust/platform:s390x-unknown-linux-gnu"],
@@ -752,12 +754,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__base64-0.22.1",
-        sha256 = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6",
+        name = "cui__base64-0.23.1",
+        sha256 = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/base64/0.22.1/download"],
-        strip_prefix = "base64-0.22.1",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.base64-0.22.1.bazel"),
+        urls = ["https://static.crates.io/crates/base64/0.23.1/download"],
+        strip_prefix = "base64-0.23.1",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.base64-0.23.1.bazel"),
     )
 
     maybe(
@@ -772,12 +774,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__bitflags-2.13.0",
-        sha256 = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8",
+        name = "cui__bitflags-2.13.2",
+        sha256 = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/bitflags/2.13.0/download"],
-        strip_prefix = "bitflags-2.13.0",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.bitflags-2.13.0.bazel"),
+        urls = ["https://static.crates.io/crates/bitflags/2.13.2/download"],
+        strip_prefix = "bitflags-2.13.2",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.bitflags-2.13.2.bazel"),
     )
 
     maybe(
@@ -822,12 +824,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__bytes-1.12.0",
-        sha256 = "8ae3f5d315924270530207e2a68396c3cc547f6dca3fbdca317cfb1a51edb593",
+        name = "cui__bytes-1.12.1",
+        sha256 = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/bytes/1.12.0/download"],
-        strip_prefix = "bytes-1.12.0",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.bytes-1.12.0.bazel"),
+        urls = ["https://static.crates.io/crates/bytes/1.12.1/download"],
+        strip_prefix = "bytes-1.12.1",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.bytes-1.12.1.bazel"),
     )
 
     maybe(
@@ -842,12 +844,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__cargo-lock-10.1.0",
-        sha256 = "c06acb4f71407ba205a07cb453211e0e6a67b21904e47f6ba1f9589e38f2e454",
+        name = "cui__cargo-lock-11.1.0",
+        sha256 = "50524592e6bfbb1bf6f94e8184a786f637faeaf1cf37bbe65502b9a2c5c48939",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/cargo-lock/10.1.0/download"],
-        strip_prefix = "cargo-lock-10.1.0",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.cargo-lock-10.1.0.bazel"),
+        urls = ["https://static.crates.io/crates/cargo-lock/11.1.0/download"],
+        strip_prefix = "cargo-lock-11.1.0",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.cargo-lock-11.1.0.bazel"),
     )
 
     maybe(
@@ -882,12 +884,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__cc-1.2.65",
-        sha256 = "e228eec9be7c17ccb640b59b36a5cd805ea2a564a4c5e162c2f659fea30d3b96",
+        name = "cui__cc-1.10.0",
+        sha256 = "86e055fa6e3e40ad6187ba25b6855eeb635d5271f8e0f0e1e9a5826b8d75bea0",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/cc/1.2.65/download"],
-        strip_prefix = "cc-1.2.65",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.cc-1.2.65.bazel"),
+        urls = ["https://static.crates.io/crates/cc/1.10.0/download"],
+        strip_prefix = "cc-1.10.0",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.cc-1.10.0.bazel"),
     )
 
     maybe(
@@ -982,12 +984,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__combine-4.6.7",
-        sha256 = "ba5a308b75df32fe02788e748662718f03fde005016435c444eea572398219fd",
+        name = "cui__combine-4.6.9",
+        sha256 = "4356eba6976435498d05a311ee9fc486da3bc81c200d3f0d7dd9703b41913f92",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/combine/4.6.7/download"],
-        strip_prefix = "combine-4.6.7",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.combine-4.6.7.bazel"),
+        urls = ["https://static.crates.io/crates/combine/4.6.9/download"],
+        strip_prefix = "combine-4.6.9",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.combine-4.6.9.bazel"),
     )
 
     maybe(
@@ -1172,12 +1174,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__find-msvc-tools-0.1.9",
-        sha256 = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582",
+        name = "cui__find-msvc-tools-0.1.15",
+        sha256 = "1c66915cc5391097de7a2b0b972e8505aa33c0df401fd3a6811dbdb32881ba48",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/find-msvc-tools/0.1.9/download"],
-        strip_prefix = "find-msvc-tools-0.1.9",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.find-msvc-tools-0.1.9.bazel"),
+        urls = ["https://static.crates.io/crates/find-msvc-tools/0.1.15/download"],
+        strip_prefix = "find-msvc-tools-0.1.15",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.find-msvc-tools-0.1.15.bazel"),
     )
 
     maybe(
@@ -1212,62 +1214,62 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__futures-channel-0.3.32",
-        sha256 = "07bbe89c50d7a535e539b8c17bc0b49bdb77747034daa8087407d655f3f7cc1d",
+        name = "cui__futures-channel-0.3.34",
+        sha256 = "b1f9e3d69d39e4862ffed03ed071a76f9a13ba1d9109d355b0f0aa6b15e393c4",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/futures-channel/0.3.32/download"],
-        strip_prefix = "futures-channel-0.3.32",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-channel-0.3.32.bazel"),
+        urls = ["https://static.crates.io/crates/futures-channel/0.3.34/download"],
+        strip_prefix = "futures-channel-0.3.34",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-channel-0.3.34.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__futures-core-0.3.32",
-        sha256 = "7e3450815272ef58cec6d564423f6e755e25379b217b0bc688e295ba24df6b1d",
+        name = "cui__futures-core-0.3.34",
+        sha256 = "92d699e522242e69e3003b94ecc1f960f3a5e015aa7c5d7486e65ad01dd94f5e",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/futures-core/0.3.32/download"],
-        strip_prefix = "futures-core-0.3.32",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-core-0.3.32.bazel"),
+        urls = ["https://static.crates.io/crates/futures-core/0.3.34/download"],
+        strip_prefix = "futures-core-0.3.34",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-core-0.3.34.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__futures-io-0.3.32",
-        sha256 = "cecba35d7ad927e23624b22ad55235f2239cfa44fd10428eecbeba6d6a717718",
+        name = "cui__futures-io-0.3.34",
+        sha256 = "53c0fa8157de1303bfffdaa1cc2a673bfffb60102f76b0ef4441659124373fed",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/futures-io/0.3.32/download"],
-        strip_prefix = "futures-io-0.3.32",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-io-0.3.32.bazel"),
+        urls = ["https://static.crates.io/crates/futures-io/0.3.34/download"],
+        strip_prefix = "futures-io-0.3.34",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-io-0.3.34.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__futures-sink-0.3.32",
-        sha256 = "c39754e157331b013978ec91992bde1ac089843443c49cbc7f46150b0fad0893",
+        name = "cui__futures-sink-0.3.34",
+        sha256 = "1944426bf7d03f1d14f708785e4b33efd750b36d48a157b836b3efc15ede8e1d",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/futures-sink/0.3.32/download"],
-        strip_prefix = "futures-sink-0.3.32",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-sink-0.3.32.bazel"),
+        urls = ["https://static.crates.io/crates/futures-sink/0.3.34/download"],
+        strip_prefix = "futures-sink-0.3.34",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-sink-0.3.34.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__futures-task-0.3.32",
-        sha256 = "037711b3d59c33004d3856fbdc83b99d4ff37a24768fa1be9ce3538a1cde4393",
+        name = "cui__futures-task-0.3.34",
+        sha256 = "cd417de3d1d015fc3bfd2b1ea46dfc7bab72ef86f1cc7cc9c78e728b34a6d1fd",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/futures-task/0.3.32/download"],
-        strip_prefix = "futures-task-0.3.32",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-task-0.3.32.bazel"),
+        urls = ["https://static.crates.io/crates/futures-task/0.3.34/download"],
+        strip_prefix = "futures-task-0.3.34",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-task-0.3.34.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__futures-util-0.3.32",
-        sha256 = "389ca41296e6190b48053de0321d02a77f32f8a5d2461dd38762c0593805c6d6",
+        name = "cui__futures-util-0.3.34",
+        sha256 = "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/futures-util/0.3.32/download"],
-        strip_prefix = "futures-util-0.3.32",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-util-0.3.32.bazel"),
+        urls = ["https://static.crates.io/crates/futures-util/0.3.34/download"],
+        strip_prefix = "futures-util-0.3.34",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.futures-util-0.3.34.bazel"),
     )
 
     maybe(
@@ -1822,12 +1824,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__hashbrown-0.15.0",
-        sha256 = "1e087f84d4f86bf4b218b927129862374b72199ae7d8657835f1e89000eea4fb",
+        name = "cui__hashbrown-0.17.1",
+        sha256 = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/hashbrown/0.15.0/download"],
-        strip_prefix = "hashbrown-0.15.0",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.hashbrown-0.15.0.bazel"),
+        urls = ["https://static.crates.io/crates/hashbrown/0.17.1/download"],
+        strip_prefix = "hashbrown-0.17.1",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.hashbrown-0.17.1.bazel"),
     )
 
     maybe(
@@ -1862,32 +1864,32 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__http-1.4.2",
-        sha256 = "6970f50e31d6fc17d3fa27329444bfa74e196cf62e95052a3f6fee181dba6425",
+        name = "cui__http-1.5.0",
+        sha256 = "918d3568bebf352712bc2ef3d46a8bcf1a75b373be6539de198e9105cbbf9ce0",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/http/1.4.2/download"],
-        strip_prefix = "http-1.4.2",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.http-1.4.2.bazel"),
+        urls = ["https://static.crates.io/crates/http/1.5.0/download"],
+        strip_prefix = "http-1.5.0",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.http-1.5.0.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__http-body-1.0.1",
-        sha256 = "1efedce1fb8e6913f23e0c92de8e62cd5b772a67e7b3946df930a62566c93184",
+        name = "cui__http-body-1.1.0",
+        sha256 = "ca2a8f2913ee65f60facd6a5905613afaa448497a0230cc41ce022d93290bc2c",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/http-body/1.0.1/download"],
-        strip_prefix = "http-body-1.0.1",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.http-body-1.0.1.bazel"),
+        urls = ["https://static.crates.io/crates/http-body/1.1.0/download"],
+        strip_prefix = "http-body-1.1.0",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.http-body-1.1.0.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__http-body-util-0.1.3",
-        sha256 = "b021d93e26becf5dc7e1b75b1bed1fd93124b374ceb73f43d4d4eafec896a64a",
+        name = "cui__http-body-util-0.1.5",
+        sha256 = "23169fe34a5fbcdd3f3862e78fb9b6fccd5f02a6dc6f732547005d45631ce71c",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/http-body-util/0.1.3/download"],
-        strip_prefix = "http-body-util-0.1.3",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.http-body-util-0.1.3.bazel"),
+        urls = ["https://static.crates.io/crates/http-body-util/0.1.5/download"],
+        strip_prefix = "http-body-util-0.1.5",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.http-body-util-0.1.5.bazel"),
     )
 
     maybe(
@@ -1902,32 +1904,32 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__hyper-1.10.1",
-        sha256 = "55281c53a1894c864990125767da440a4e630446785086f52523b20033b74498",
+        name = "cui__hyper-1.12.0",
+        sha256 = "2c3e324da4c95177d6291d4c8730197c0d1822f8a9766814a4a44fa5ab797c9c",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/hyper/1.10.1/download"],
-        strip_prefix = "hyper-1.10.1",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.hyper-1.10.1.bazel"),
+        urls = ["https://static.crates.io/crates/hyper/1.12.0/download"],
+        strip_prefix = "hyper-1.12.0",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.hyper-1.12.0.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__hyper-rustls-0.27.9",
-        sha256 = "33ca68d021ef39cf6463ab54c1d0f5daf03377b70561305bb89a8f83aab66e0f",
+        name = "cui__hyper-rustls-0.27.10",
+        sha256 = "dfa8e654703247911e29c23fbeaa261834bd9bb74efba2f9acddc37bfb127f53",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/hyper-rustls/0.27.9/download"],
-        strip_prefix = "hyper-rustls-0.27.9",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.hyper-rustls-0.27.9.bazel"),
+        urls = ["https://static.crates.io/crates/hyper-rustls/0.27.10/download"],
+        strip_prefix = "hyper-rustls-0.27.10",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.hyper-rustls-0.27.10.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__hyper-util-0.1.20",
-        sha256 = "96547c2556ec9d12fb1578c4eaf448b04993e7fb79cbaad930a656880a6bdfa0",
+        name = "cui__hyper-util-0.1.21",
+        sha256 = "ddc03d96684f9226b8a787cdb71488417b53ab5ea8fdb1dac946cb9431cc8bff",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/hyper-util/0.1.20/download"],
-        strip_prefix = "hyper-util-0.1.20",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.hyper-util-0.1.20.bazel"),
+        urls = ["https://static.crates.io/crates/hyper-util/0.1.21/download"],
+        strip_prefix = "hyper-util-0.1.21",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.hyper-util-0.1.21.bazel"),
     )
 
     maybe(
@@ -2062,12 +2064,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__indexmap-2.6.0",
-        sha256 = "707907fe3c25f5424cce2cb7e1cbcafee6bdbe735ca90ef77c29e84591e5b9da",
+        name = "cui__indexmap-2.14.0",
+        sha256 = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/indexmap/2.6.0/download"],
-        strip_prefix = "indexmap-2.6.0",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.indexmap-2.6.0.bazel"),
+        urls = ["https://static.crates.io/crates/indexmap/2.14.0/download"],
+        strip_prefix = "indexmap-2.14.0",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.indexmap-2.14.0.bazel"),
     )
 
     maybe(
@@ -2082,12 +2084,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__ipnet-2.12.0",
-        sha256 = "d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2",
+        name = "cui__ipnet-2.12.2",
+        sha256 = "791930b43c0d5973160d90a8f3894509f2b273430f5c5c73b668636d0287c5c0",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/ipnet/2.12.0/download"],
-        strip_prefix = "ipnet-2.12.0",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.ipnet-2.12.0.bazel"),
+        urls = ["https://static.crates.io/crates/ipnet/2.12.2/download"],
+        strip_prefix = "ipnet-2.12.2",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.ipnet-2.12.2.bazel"),
     )
 
     maybe(
@@ -2192,12 +2194,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__js-sys-0.3.103",
-        sha256 = "53b44bfcdb3f8d5837a46dae1ca9660a837176eee74a28b229bc626816589102",
+        name = "cui__js-sys-0.3.106",
+        sha256 = "7883d941dae510fb2d978fc3fe018c71c9e2892fd38854de3e8b92c2e5ad9cc5",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/js-sys/0.3.103/download"],
-        strip_prefix = "js-sys-0.3.103",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.js-sys-0.3.103.bazel"),
+        urls = ["https://static.crates.io/crates/js-sys/0.3.106/download"],
+        strip_prefix = "js-sys-0.3.106",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.js-sys-0.3.106.bazel"),
     )
 
     maybe(
@@ -2372,12 +2374,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__openssl-probe-0.2.1",
-        sha256 = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe",
+        name = "cui__openssl-probe-0.2.2",
+        sha256 = "7e036b411754132fd6b74e94b74e9a13c5cf606fa93d1885c35860d3060820b1",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/openssl-probe/0.2.1/download"],
-        strip_prefix = "openssl-probe-0.2.1",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.openssl-probe-0.2.1.bazel"),
+        urls = ["https://static.crates.io/crates/openssl-probe/0.2.2/download"],
+        strip_prefix = "openssl-probe-0.2.2",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.openssl-probe-0.2.2.bazel"),
     )
 
     maybe(
@@ -2582,12 +2584,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__reqwest-0.13.4",
-        sha256 = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3",
+        name = "cui__reqwest-0.13.5",
+        sha256 = "16a1cfa75cc186dd73d5818e510e042e40927bccc9c236b061cea97e1eb08029",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/reqwest/0.13.4/download"],
-        strip_prefix = "reqwest-0.13.4",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.reqwest-0.13.4.bazel"),
+        urls = ["https://static.crates.io/crates/reqwest/0.13.5/download"],
+        strip_prefix = "reqwest-0.13.5",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.reqwest-0.13.5.bazel"),
     )
 
     maybe(
@@ -2652,72 +2654,72 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__rustls-0.23.41",
-        sha256 = "6b92b125634d9b795e7beca796cc790df15a7fb38323bf3196fda83292d06b1f",
+        name = "cui__rustls-0.23.46",
+        sha256 = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/rustls/0.23.41/download"],
-        strip_prefix = "rustls-0.23.41",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-0.23.41.bazel"),
+        urls = ["https://static.crates.io/crates/rustls/0.23.46/download"],
+        strip_prefix = "rustls-0.23.46",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-0.23.46.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__rustls-native-certs-0.8.4",
-        sha256 = "dab5152771c58876a2146916e53e35057e1a4dfa2b9df0f0305b07f611fdea4d",
+        name = "cui__rustls-native-certs-0.8.5",
+        sha256 = "4a073f5dc7469f984c52ad2752b63b0807745133b6de880b7b64c1ac4c48aec4",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/rustls-native-certs/0.8.4/download"],
-        strip_prefix = "rustls-native-certs-0.8.4",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-native-certs-0.8.4.bazel"),
+        urls = ["https://static.crates.io/crates/rustls-native-certs/0.8.5/download"],
+        strip_prefix = "rustls-native-certs-0.8.5",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-native-certs-0.8.5.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__rustls-pki-types-1.14.1",
-        sha256 = "30a7197ae7eb376e574fe940d068c30fe0462554a3ddbe4eca7838e049c937a9",
+        name = "cui__rustls-pki-types-1.15.1",
+        sha256 = "2f4925028c7eb5d1fcdaf196971378ed9d2c1c4efc7dc5d011256f76c99c0a96",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/rustls-pki-types/1.14.1/download"],
-        strip_prefix = "rustls-pki-types-1.14.1",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-pki-types-1.14.1.bazel"),
+        urls = ["https://static.crates.io/crates/rustls-pki-types/1.15.1/download"],
+        strip_prefix = "rustls-pki-types-1.15.1",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-pki-types-1.15.1.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__rustls-platform-verifier-0.7.0",
-        sha256 = "26d1e2536ce4f35f4846aa13bff16bd0ff40157cdb14cc056c7b14ba41233ba0",
+        name = "cui__rustls-platform-verifier-0.7.1",
+        sha256 = "1167586491e2b18b8bfbb293e8180ec17c201c4f076d7cb3070ca964e7598f98",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/rustls-platform-verifier/0.7.0/download"],
-        strip_prefix = "rustls-platform-verifier-0.7.0",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-platform-verifier-0.7.0.bazel"),
+        urls = ["https://static.crates.io/crates/rustls-platform-verifier/0.7.1/download"],
+        strip_prefix = "rustls-platform-verifier-0.7.1",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-platform-verifier-0.7.1.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__rustls-platform-verifier-android-0.1.1",
-        sha256 = "f87165f0995f63a9fbeea62b64d10b4d9d8e78ec6d7d51fb2125fda7bb36788f",
+        name = "cui__rustls-platform-verifier-android-0.2.0",
+        sha256 = "eec689c0bc40ff2458a5977b6619cb718087084a18e02a131c599b62d05e1a5f",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/rustls-platform-verifier-android/0.1.1/download"],
-        strip_prefix = "rustls-platform-verifier-android-0.1.1",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-platform-verifier-android-0.1.1.bazel"),
+        urls = ["https://static.crates.io/crates/rustls-platform-verifier-android/0.2.0/download"],
+        strip_prefix = "rustls-platform-verifier-android-0.2.0",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-platform-verifier-android-0.2.0.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__rustls-webpki-0.103.13",
-        sha256 = "61c429a8649f110dddef65e2a5ad240f747e85f7758a6bccc7e5777bd33f756e",
+        name = "cui__rustls-webpki-0.103.16",
+        sha256 = "4443b1b6d39d7c663139942cc4558262562d2c84123bb6282ef177009ca8b281",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/rustls-webpki/0.103.13/download"],
-        strip_prefix = "rustls-webpki-0.103.13",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-webpki-0.103.13.bazel"),
+        urls = ["https://static.crates.io/crates/rustls-webpki/0.103.16/download"],
+        strip_prefix = "rustls-webpki-0.103.16",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustls-webpki-0.103.16.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__rustversion-1.0.22",
-        sha256 = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d",
+        name = "cui__rustversion-1.0.23",
+        sha256 = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/rustversion/1.0.22/download"],
-        strip_prefix = "rustversion-1.0.22",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustversion-1.0.22.bazel"),
+        urls = ["https://static.crates.io/crates/rustversion/1.0.23/download"],
+        strip_prefix = "rustversion-1.0.23",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.rustversion-1.0.23.bazel"),
     )
 
     maybe(
@@ -2742,12 +2744,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__schannel-0.1.29",
-        sha256 = "91c1b7e4904c873ef0710c1f407dde2e6287de2bebc1bbbf7d430bb7cbffd939",
+        name = "cui__schannel-0.1.30",
+        sha256 = "9cb23c424d8ee841bb4d813677ca237e2a610067d594fec130f87d6093495ab5",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/schannel/0.1.29/download"],
-        strip_prefix = "schannel-0.1.29",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.schannel-0.1.29.bazel"),
+        urls = ["https://static.crates.io/crates/schannel/0.1.30/download"],
+        strip_prefix = "schannel-0.1.30",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.schannel-0.1.30.bazel"),
     )
 
     maybe(
@@ -2792,22 +2794,32 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__serde-1.0.219",
-        sha256 = "5f0e2c6ed6606019b4e29e69dbaba95b11854410e5347d525002456dbbb786b6",
+        name = "cui__serde-1.0.229",
+        sha256 = "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/serde/1.0.219/download"],
-        strip_prefix = "serde-1.0.219",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.serde-1.0.219.bazel"),
+        urls = ["https://static.crates.io/crates/serde/1.0.229/download"],
+        strip_prefix = "serde-1.0.229",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.serde-1.0.229.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__serde_derive-1.0.219",
-        sha256 = "5b0276cf7f2c73365f7157c8123c21cd9a50fbbd844757af28ca1f5925fc2a00",
+        name = "cui__serde_core-1.0.229",
+        sha256 = "67dca2c9c51e58a4791a4b1ed58308b39c64224d349a935ab5039aa360942a48",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/serde_derive/1.0.219/download"],
-        strip_prefix = "serde_derive-1.0.219",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.serde_derive-1.0.219.bazel"),
+        urls = ["https://static.crates.io/crates/serde_core/1.0.229/download"],
+        strip_prefix = "serde_core-1.0.229",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.serde_core-1.0.229.bazel"),
+    )
+
+    maybe(
+        http_archive,
+        name = "cui__serde_derive-1.0.229",
+        sha256 = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348",
+        type = "tar.gz",
+        urls = ["https://static.crates.io/crates/serde_derive/1.0.229/download"],
+        strip_prefix = "serde_derive-1.0.229",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.serde_derive-1.0.229.bazel"),
     )
 
     maybe(
@@ -2832,12 +2844,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__serde_spanned-1.0.0",
-        sha256 = "40734c41988f7306bb04f0ecf60ec0f3f1caa34290e4e8ea471dcd3346483b83",
+        name = "cui__serde_spanned-1.1.1",
+        sha256 = "6662b5879511e06e8999a8a235d848113e942c9124f211511b16466ee2995f26",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/serde_spanned/1.0.0/download"],
-        strip_prefix = "serde_spanned-1.0.0",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.serde_spanned-1.0.0.bazel"),
+        urls = ["https://static.crates.io/crates/serde_spanned/1.1.1/download"],
+        strip_prefix = "serde_spanned-1.1.1",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.serde_spanned-1.1.1.bazel"),
     )
 
     maybe(
@@ -2902,12 +2914,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__simd_cesu8-1.1.1",
-        sha256 = "94f90157bb87cddf702797c5dadfa0be7d266cdf49e22da2fcaa32eff75b2c33",
+        name = "cui__simd_cesu8-1.2.0",
+        sha256 = "11031e251abf8611c80f460e19dbdeb54a66db918e49c65a7065b46ac7aec520",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/simd_cesu8/1.1.1/download"],
-        strip_prefix = "simd_cesu8-1.1.1",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.simd_cesu8-1.1.1.bazel"),
+        urls = ["https://static.crates.io/crates/simd_cesu8/1.2.0/download"],
+        strip_prefix = "simd_cesu8-1.2.0",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.simd_cesu8-1.2.0.bazel"),
     )
 
     maybe(
@@ -2962,12 +2974,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__socket2-0.6.4",
-        sha256 = "52d1cfed4120b4d927bf7c0f86d2087a4a7d6027c906d9f9d525a80573b9be51",
+        name = "cui__socket2-0.6.5",
+        sha256 = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/socket2/0.6.4/download"],
-        strip_prefix = "socket2-0.6.4",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.socket2-0.6.4.bazel"),
+        urls = ["https://static.crates.io/crates/socket2/0.6.5/download"],
+        strip_prefix = "socket2-0.6.5",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.socket2-0.6.5.bazel"),
     )
 
     maybe(
@@ -3038,6 +3050,16 @@ def crate_repositories():
         urls = ["https://static.crates.io/crates/syn/2.0.90/download"],
         strip_prefix = "syn-2.0.90",
         build_file = Label("//crate_universe/3rdparty/crates:BUILD.syn-2.0.90.bazel"),
+    )
+
+    maybe(
+        http_archive,
+        name = "cui__syn-3.0.3",
+        sha256 = "53e9bae58849f64dfa4f5d5ae372c8341f7305f82a3868709269343628b659a3",
+        type = "tar.gz",
+        urls = ["https://static.crates.io/crates/syn/3.0.3/download"],
+        strip_prefix = "syn-3.0.3",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.syn-3.0.3.bazel"),
     )
 
     maybe(
@@ -3182,12 +3204,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__tokio-rustls-0.26.4",
-        sha256 = "1729aa945f29d91ba541258c8df89027d5792d85a8841fb65e8bf0f4ede4ef61",
+        name = "cui__tokio-rustls-0.26.6",
+        sha256 = "c9cc2678c2cdd569ef8215e2afd7954ada2ae20b4fdd2c5fe6139a3b02d105db",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/tokio-rustls/0.26.4/download"],
-        strip_prefix = "tokio-rustls-0.26.4",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.tokio-rustls-0.26.4.bazel"),
+        urls = ["https://static.crates.io/crates/tokio-rustls/0.26.6/download"],
+        strip_prefix = "tokio-rustls-0.26.6",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.tokio-rustls-0.26.6.bazel"),
     )
 
     maybe(
@@ -3212,6 +3234,16 @@ def crate_repositories():
 
     maybe(
         http_archive,
+        name = "cui__toml-1.1.0-spec-1.1.0",
+        sha256 = "f8195ca05e4eb728f4ba94f3e3291661320af739c4e43779cbdfae82ab239fcc",
+        type = "tar.gz",
+        urls = ["https://static.crates.io/crates/toml/1.1.0+spec-1.1.0/download"],
+        strip_prefix = "toml-1.1.0+spec-1.1.0",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.toml-1.1.0+spec-1.1.0.bazel"),
+    )
+
+    maybe(
+        http_archive,
         name = "cui__toml_datetime-0.6.9",
         sha256 = "3da5db5a963e24bc68be8b17b6fa82814bb22ee8660f192bb182771d498f09a3",
         type = "tar.gz",
@@ -3228,6 +3260,16 @@ def crate_repositories():
         urls = ["https://static.crates.io/crates/toml_datetime/0.7.0/download"],
         strip_prefix = "toml_datetime-0.7.0",
         build_file = Label("//crate_universe/3rdparty/crates:BUILD.toml_datetime-0.7.0.bazel"),
+    )
+
+    maybe(
+        http_archive,
+        name = "cui__toml_datetime-1.1.1-spec-1.1.0",
+        sha256 = "3165f65f62e28e0115a00b2ebdd37eb6f3b641855f9d636d3cd4103767159ad7",
+        type = "tar.gz",
+        urls = ["https://static.crates.io/crates/toml_datetime/1.1.1+spec-1.1.0/download"],
+        strip_prefix = "toml_datetime-1.1.1+spec-1.1.0",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.toml_datetime-1.1.1+spec-1.1.0.bazel"),
     )
 
     maybe(
@@ -3582,12 +3624,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__want-0.3.1",
-        sha256 = "bfa7760aed19e106de2c7c0b581b509f2f25d3dacaf737cb82ac61bc6d760b0e",
+        name = "cui__want-0.3.2",
+        sha256 = "ec4cdd0dd910afe868b7ef477227d8d538b46b3075031afee8a9f2acb0a2ed0b",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/want/0.3.1/download"],
-        strip_prefix = "want-0.3.1",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.want-0.3.1.bazel"),
+        urls = ["https://static.crates.io/crates/want/0.3.2/download"],
+        strip_prefix = "want-0.3.2",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.want-0.3.2.bazel"),
     )
 
     maybe(
@@ -3612,72 +3654,72 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__wasm-bindgen-0.2.126",
-        sha256 = "4b067c0c11094aef6b7a801c1e34a26affafdf3d051dba08456b868789aaf9a4",
+        name = "cui__wasm-bindgen-0.2.129",
+        sha256 = "9bb54f33acc68fd454578d9820b0bde1a1a3d17aa17bb7b6595806d02886d409",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/wasm-bindgen/0.2.126/download"],
-        strip_prefix = "wasm-bindgen-0.2.126",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.wasm-bindgen-0.2.126.bazel"),
+        urls = ["https://static.crates.io/crates/wasm-bindgen/0.2.129/download"],
+        strip_prefix = "wasm-bindgen-0.2.129",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.wasm-bindgen-0.2.129.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__wasm-bindgen-futures-0.4.76",
-        sha256 = "c62df1340f32221cb9c54d6a27b030e3dba64361d4a95bed55f9aacb44da291d",
+        name = "cui__wasm-bindgen-futures-0.4.79",
+        sha256 = "3cbab34de2d982e9b48e18d216d04c4a6f641066ff19ffb699980f591ee3610e",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/wasm-bindgen-futures/0.4.76/download"],
-        strip_prefix = "wasm-bindgen-futures-0.4.76",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.wasm-bindgen-futures-0.4.76.bazel"),
+        urls = ["https://static.crates.io/crates/wasm-bindgen-futures/0.4.79/download"],
+        strip_prefix = "wasm-bindgen-futures-0.4.79",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.wasm-bindgen-futures-0.4.79.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__wasm-bindgen-macro-0.2.126",
-        sha256 = "167ce5e579f6bcf889c4f7175a8a5a585de84e8ff93976ce393efa5f2837aab1",
+        name = "cui__wasm-bindgen-macro-0.2.129",
+        sha256 = "2e29d0c35b16e224a7eeb5cd2d25e3e1968fbd65604117b44d3b789d00ee8535",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/wasm-bindgen-macro/0.2.126/download"],
-        strip_prefix = "wasm-bindgen-macro-0.2.126",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.wasm-bindgen-macro-0.2.126.bazel"),
+        urls = ["https://static.crates.io/crates/wasm-bindgen-macro/0.2.129/download"],
+        strip_prefix = "wasm-bindgen-macro-0.2.129",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.wasm-bindgen-macro-0.2.129.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__wasm-bindgen-macro-support-0.2.126",
-        sha256 = "f3997c7839262f4ef12cf90b818d6340c18e80f263f1a94bf157d0ec4420380e",
+        name = "cui__wasm-bindgen-macro-support-0.2.129",
+        sha256 = "6f501a8bc3719dba86ef8ae4728879c08001bea749eb1333ac5b91e040e2a6b7",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/wasm-bindgen-macro-support/0.2.126/download"],
-        strip_prefix = "wasm-bindgen-macro-support-0.2.126",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.wasm-bindgen-macro-support-0.2.126.bazel"),
+        urls = ["https://static.crates.io/crates/wasm-bindgen-macro-support/0.2.129/download"],
+        strip_prefix = "wasm-bindgen-macro-support-0.2.129",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.wasm-bindgen-macro-support-0.2.129.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__wasm-bindgen-shared-0.2.126",
-        sha256 = "dc1b4cb0cc549fcf58d7dfc081778139b3d283a081644e833e84682ad71cea24",
+        name = "cui__wasm-bindgen-shared-0.2.129",
+        sha256 = "23f0c9c52aa7cd7d77769a4cfe2a9adb1b331f489a41d912ce14513d5ab995c6",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/wasm-bindgen-shared/0.2.126/download"],
-        strip_prefix = "wasm-bindgen-shared-0.2.126",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.wasm-bindgen-shared-0.2.126.bazel"),
+        urls = ["https://static.crates.io/crates/wasm-bindgen-shared/0.2.129/download"],
+        strip_prefix = "wasm-bindgen-shared-0.2.129",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.wasm-bindgen-shared-0.2.129.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__web-sys-0.3.103",
-        sha256 = "8622dcb61c0bcc9fffa6938bed81210af2da9a7e4a1a834b2e37a59b6dfb6141",
+        name = "cui__web-sys-0.3.106",
+        sha256 = "88261b9deccee56594c11a3460c462c41f58d148598fe70ad77070126a68aba4",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/web-sys/0.3.103/download"],
-        strip_prefix = "web-sys-0.3.103",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.web-sys-0.3.103.bazel"),
+        urls = ["https://static.crates.io/crates/web-sys/0.3.106/download"],
+        strip_prefix = "web-sys-0.3.106",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.web-sys-0.3.106.bazel"),
     )
 
     maybe(
         http_archive,
-        name = "cui__webpki-root-certs-1.0.8",
-        sha256 = "0d46a5a140e6f7afeccd8eae97eff335163939eac8b929834875168b29b3d267",
+        name = "cui__webpki-root-certs-1.0.11",
+        sha256 = "e49d0e65abc00c142e8f9428da991da9f1a250c39be97459901eb12b9b49f62a",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/webpki-root-certs/1.0.8/download"],
-        strip_prefix = "webpki-root-certs-1.0.8",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.webpki-root-certs-1.0.8.bazel"),
+        urls = ["https://static.crates.io/crates/webpki-root-certs/1.0.11/download"],
+        strip_prefix = "webpki-root-certs-1.0.11",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.webpki-root-certs-1.0.11.bazel"),
     )
 
     maybe(
@@ -4062,12 +4104,12 @@ def crate_repositories():
 
     maybe(
         http_archive,
-        name = "cui__zeroize-1.9.0",
-        sha256 = "e13c156562582aa81c60cb29407084cdb54c4164760106ab78e6c5b0858cf64e",
+        name = "cui__zeroize-1.9.1",
+        sha256 = "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879",
         type = "tar.gz",
-        urls = ["https://static.crates.io/crates/zeroize/1.9.0/download"],
-        strip_prefix = "zeroize-1.9.0",
-        build_file = Label("//crate_universe/3rdparty/crates:BUILD.zeroize-1.9.0.bazel"),
+        urls = ["https://static.crates.io/crates/zeroize/1.9.1/download"],
+        strip_prefix = "zeroize-1.9.1",
+        build_file = Label("//crate_universe/3rdparty/crates:BUILD.zeroize-1.9.1.bazel"),
     )
 
     maybe(
@@ -4094,7 +4136,7 @@ def crate_repositories():
         struct(repo = "cui", is_dev_dep = False),
         struct(repo = "cui__anyhow-1.0.98", is_dev_dep = False),
         struct(repo = "cui__camino-1.1.9", is_dev_dep = False),
-        struct(repo = "cui__cargo-lock-10.1.0", is_dev_dep = False),
+        struct(repo = "cui__cargo-lock-11.1.0", is_dev_dep = False),
         struct(repo = "cui__cargo-platform-0.1.9", is_dev_dep = False),
         struct(repo = "cui__cargo_metadata-0.19.2", is_dev_dep = False),
         struct(repo = "cui__cargo_toml-0.22.3", is_dev_dep = False),
@@ -4109,10 +4151,10 @@ def crate_repositories():
         struct(repo = "cui__once_cell-1.21.3", is_dev_dep = False),
         struct(repo = "cui__pathdiff-0.2.3", is_dev_dep = False),
         struct(repo = "cui__regex-1.11.1", is_dev_dep = False),
-        struct(repo = "cui__reqwest-0.13.4", is_dev_dep = False),
-        struct(repo = "cui__rustls-0.23.41", is_dev_dep = False),
+        struct(repo = "cui__reqwest-0.13.5", is_dev_dep = False),
+        struct(repo = "cui__rustls-0.23.46", is_dev_dep = False),
         struct(repo = "cui__semver-1.0.26", is_dev_dep = False),
-        struct(repo = "cui__serde-1.0.219", is_dev_dep = False),
+        struct(repo = "cui__serde-1.0.229", is_dev_dep = False),
         struct(repo = "cui__serde_json-1.0.140", is_dev_dep = False),
         struct(repo = "cui__serde_starlark-0.1.17", is_dev_dep = False),
         struct(repo = "cui__sha2-0.10.8", is_dev_dep = False),

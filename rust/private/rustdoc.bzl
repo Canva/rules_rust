@@ -14,6 +14,7 @@
 
 """Rules for generating documentation with `rustdoc` for Bazel built crates"""
 
+load("@rules_cc//cc:find_cc_toolchain.bzl", "use_cc_toolchain")
 load("//rust/private:common.bzl", "rust_common")
 load("//rust/private:pic_utils.bzl", "should_use_pic")
 load("//rust/private:providers.bzl", "LintsInfo")
@@ -28,25 +29,36 @@ load(
     "get_preferred_artifact",
 )
 
-def _strip_crate_info_output(crate_info):
-    """Set the CrateInfo.output to None for a given CrateInfo provider.
+def _rustdoc_crate_info(crate_info, output):
+    """Clone a `CrateInfo` provider for use by a rustdoc action.
+
+    The `CrateInfo` provider documents `output` as a required `File`
+    ([rust/private/providers.bzl](../providers.bzl)) and every other
+    consumer of `crate_info.output` in the tree assumes it. rustdoc
+    actions don't produce the crate's compile output (`.rlib`/binary),
+    so we swap in a rustdoc-owned `File` — the rustdoc HTML directory
+    when the caller has one, or the crate's root source file as a
+    valid fallback for actions (like the legacy test-writer path) that
+    have no rustdoc-produced `File` at analysis time.
 
     Args:
-        crate_info (CrateInfo): A provider
+        crate_info (CrateInfo): The original provider.
+        output (File): A `File` to publish as the rustdoc `CrateInfo`'s
+            `output`. Must be non-`None`.
 
     Returns:
-        CrateInfo: A modified CrateInfo provider
+        CrateInfo: A modified CrateInfo provider.
     """
     return rust_common.create_crate_info(
         name = crate_info.name,
         type = crate_info.type,
         root = crate_info.root,
+        root_path = crate_info.root_path,
         srcs = crate_info.srcs,
         deps = crate_info.deps,
         proc_macro_deps = crate_info.proc_macro_deps,
         aliases = crate_info.aliases,
-        # This crate info should have no output
-        output = None,
+        output = output,
         metadata = None,
         edition = crate_info.edition,
         rustc_env = crate_info.rustc_env,
@@ -55,6 +67,7 @@ def _strip_crate_info_output(crate_info):
         compile_data = crate_info.compile_data,
         compile_data_targets = crate_info.compile_data_targets,
         data = crate_info.data,
+        owner = crate_info.owner,
     )
 
 def rustdoc_compile_action(
@@ -84,14 +97,6 @@ def rustdoc_compile_action(
     """
     if force_depend_on_objects == None:
         force_depend_on_objects = is_test
-
-    # If an output was provided, ensure it's used in rustdoc arguments
-    if output:
-        rustdoc_flags.add_all(
-            [output],
-            before_each = "--output",
-            expand_directories = False,
-        )
 
     # Specify rustc flags for lints, if they were provided.
     lint_files = []
@@ -135,11 +140,15 @@ def rustdoc_compile_action(
         include_link_flags = False,
     )
 
-    # Since this crate is not actually producing the output described by the
-    # given CrateInfo, this attribute needs to be stripped to allow the rest
-    # of the rustc functionality in `construct_arguments` to avoid generating
-    # arguments expecting to do so.
-    rustdoc_crate_info = _strip_crate_info_output(crate_info)
+    # rustdoc actions don't produce the crate's compile output, so we swap in
+    # a rustdoc-owned `File` for the `CrateInfo` handed to `construct_arguments`.
+    # Prefer the caller-supplied rustdoc output when available; otherwise fall
+    # back to the crate root, which is always a `File` per the provider contract.
+    rustdoc_crate_info = _rustdoc_crate_info(crate_info, output if output != None else crate_info.root)
+
+    # Runtime libs contributed by the cc_toolchain, tracked so `rust_doc_test`
+    # can strip their (separately configured) root from the runfiles paths.
+    static_runtime_libs = []
 
     # rustdoc does not understand linker flags like -lstatic that
     # `include_link_flags` generates. So we manually build flags that only apply
@@ -160,6 +169,33 @@ def rustdoc_compile_action(
                 if not (lib.static_library or lib.pic_static_library):
                     continue
                 arg = get_lib_name(get_preferred_artifact(lib, use_pic))
+                if not for_windows:
+                    arg = "-l" + arg
+                if type(rustdoc_flags) == "Args":
+                    rustdoc_flags.add("-Clink-arg=%s" % arg)
+                else:
+                    rustdoc_flags.append("-Clink-arg=%s" % arg)
+
+        # The cc_toolchain's runtime libs (libc++ / libunwind on any toolchain
+        # enabling `static_link_cpp_runtimes`) are NOT part of
+        # transitive_noncrates: Bazel injects them into C++ link actions, and
+        # rustdoc never runs one -- it drives the link itself.
+        # `add_native_link_flags` emits their `-Lnative=` search path
+        # unconditionally but gates the matching `-lstatic=` behind
+        # `include_link_flags`, which is False for rustdoc. Without the `-l`
+        # below the archives sit on the search path with nothing referencing
+        # them, and every doc test fails to link with undefined `_Unwind_*`.
+        #
+        # Mirrors the crate-type split in `collect_inputs`, so the libs named
+        # here are the ones that were added to the action inputs.
+        if cc_toolchain:
+            if crate_info.type in ["dylib", "cdylib"]:
+                runtime_libs = cc_toolchain.dynamic_runtime_lib(feature_configuration = feature_configuration)
+            else:
+                runtime_libs = cc_toolchain.static_runtime_lib(feature_configuration = feature_configuration)
+            for lib in runtime_libs.to_list():
+                static_runtime_libs.append(lib)
+                arg = get_lib_name(lib)
                 if not for_windows:
                     arg = "-l" + arg
                 if type(rustdoc_flags) == "Args":
@@ -211,6 +247,7 @@ def rustdoc_compile_action(
         arguments = args.all,
         supports_path_mapping = args.supports_path_mapping,
         tools = [toolchain.rust_doc],
+        static_runtime_libs = static_runtime_libs,
     )
 
 def _zip_action(ctx, input_dir, output_zip, crate_label):
@@ -428,6 +465,5 @@ rust_doc = rule(
     },
     toolchains = [
         str(Label("//rust:toolchain_type")),
-        config_common.toolchain_type("@bazel_tools//tools/cpp:toolchain_type", mandatory = False),
-    ],
+    ] + use_cc_toolchain(mandatory = False),
 )

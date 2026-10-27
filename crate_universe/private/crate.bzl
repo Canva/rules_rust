@@ -96,6 +96,7 @@ def _annotation(
         build_script_data_glob = None,
         build_script_deps = None,
         build_script_env = None,
+        build_script_env_files = None,
         build_script_exec_properties = None,
         build_script_link_deps = None,
         build_script_proc_macro_deps = None,
@@ -103,6 +104,7 @@ def _annotation(
         build_script_rustc_env = None,
         build_script_toolchains = None,
         build_script_use_default_shell_env = None,
+        build_script_use_cc_toolchain = None,
         compile_data = None,
         compile_data_glob = None,
         compile_data_glob_excludes = None,
@@ -142,6 +144,8 @@ def _annotation(
             attribute.
         build_script_deps (list, optional): A list of labels to add to a crate's `cargo_build_script::deps` attribute.
         build_script_env (dict, optional): Additional environment variables to set when running the crate's `cargo_build_script` - sets that target's `build_script_env` attribute.
+        build_script_env_files (list, optional): A list of labels to set on a crate's
+            `cargo_build_script::build_script_env_files` attribute.
         build_script_exec_properties (dict, optional): Execution properties to set on a crate's `cargo_build_script::exec_properties` attribute.
         build_script_link_deps:  A list of labels to add to a crate's `cargo_build_script::link_deps` attribute.
         build_script_proc_macro_deps (list, optional): A list of labels to add to a crate's
@@ -151,6 +155,9 @@ def _annotation(
         build_script_toolchains (list, optional): A list of labels to set on a crates's `cargo_build_script::toolchains` attribute.
         build_script_use_default_shell_env (int, optional): Whether or not to include the default shell environment for the build
             script action.
+        build_script_use_cc_toolchain (int, optional): Whether or not to pull in the resolved `cc_toolchain` when
+            running the build script. Set to `1` to force enable, `0` to force disable, or leave unset to
+            defer to the `@rules_rust//cargo/settings:use_cc_toolchain` build setting (defaults to enabled).
         compile_data (list, optional): A list of labels to add to a crate's `rust_library::compile_data` attribute.
         compile_data_glob (list, optional): A list of glob patterns to add to a crate's `rust_library::compile_data`
             attribute.
@@ -210,6 +217,7 @@ def _annotation(
             build_script_data_glob = build_script_data_glob,
             build_script_deps = _stringify_list(build_script_deps),
             build_script_env = build_script_env,
+            build_script_env_files = _stringify_list(build_script_env_files),
             build_script_exec_properties = build_script_exec_properties,
             build_script_link_deps = build_script_link_deps,
             build_script_proc_macro_deps = _stringify_list(build_script_proc_macro_deps),
@@ -217,6 +225,7 @@ def _annotation(
             build_script_rustc_env = build_script_rustc_env,
             build_script_toolchains = _stringify_list(build_script_toolchains),
             build_script_use_default_shell_env = build_script_use_default_shell_env,
+            build_script_use_cc_toolchain = build_script_use_cc_toolchain,
             compile_data = _stringify_list(compile_data),
             compile_data_glob = compile_data_glob,
             compile_data_glob_excludes = compile_data_glob_excludes,

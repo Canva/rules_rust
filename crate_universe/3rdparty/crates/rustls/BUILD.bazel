@@ -10,6 +10,6 @@ package(default_visibility = ["//visibility:public"])
 
 alias(
     name = "rustls",
-    actual = "@cui__rustls-0.23.41//:rustls",
+    actual = "@cui__rustls-0.23.46//:rustls",
     tags = ["manual"],
 )

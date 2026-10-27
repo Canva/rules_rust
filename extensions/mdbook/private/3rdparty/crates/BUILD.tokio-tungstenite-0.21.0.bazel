@@ -82,6 +82,7 @@ rust_library(
         "@rules_rust//rust/platform:powerpc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv32imac-unknown-none-elf": [],
         "@rules_rust//rust/platform:riscv32imc-unknown-none-elf": [],
+        "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-none-elf": [],
         "@rules_rust//rust/platform:s390x-unknown-linux-gnu": [],
@@ -114,9 +115,9 @@ rust_library(
     }),
     version = "0.21.0",
     deps = [
-        "@rmdbi__futures-util-0.3.32//:futures_util",
-        "@rmdbi__log-0.4.33//:log",
-        "@rmdbi__tokio-1.52.3//:tokio",
+        "@rmdbi__futures-util-0.3.34//:futures_util",
+        "@rmdbi__log-0.4.34//:log",
+        "@rmdbi__tokio-1.54.0//:tokio",
         "@rmdbi__tungstenite-0.21.0//:tungstenite",
     ],
 )

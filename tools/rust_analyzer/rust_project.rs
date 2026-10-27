@@ -1,5 +1,5 @@
 //! Library for generating rust_project.json files from a `Vec<CrateSpec>`
-//! See official documentation of file format at https://rust-analyzer.github.io/manual.html
+//! See official documentation of file format at https://rust-analyzer.github.io/book/non_cargo_based_projects.html
 
 use core::fmt;
 use std::{
@@ -57,7 +57,7 @@ impl FromStr for RustAnalyzerArg {
 
 /// The format that `rust_analyzer` expects as a response when automatically invoked.
 /// See [rust-analyzer documentation][rd] for a thorough description of this interface.
-/// [rd]: <https://rust-analyzer.github.io/manual.html#rust-analyzer.workspace.discoverConfig>.
+/// [rd]: <https://rust-analyzer.github.io/book/configuration.html#workspace.discoverConfig>.
 // `Progress` carries an `&fmt::Arguments` for in-flight log lines, which can't
 // be deserialized; the cache stores the inner `RustProject`, never the
 // discovery envelope, so Serialize is all we need here.
@@ -80,7 +80,7 @@ pub enum DiscoverProject<'a> {
 
 /// A `rust-project.json` workspace representation. See
 /// [rust-analyzer documentation][rd] for a thorough description of this interface.
-/// [rd]: https://rust-analyzer.github.io/manual.html#non-cargo-based-projects
+/// [rd]: https://rust-analyzer.github.io/book/non_cargo_based_projects.html
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RustProject {
     /// The path to a Rust sysroot.
@@ -103,7 +103,7 @@ pub struct RustProject {
 
 /// A `rust-project.json` crate representation. See
 /// [rust-analyzer documentation][rd] for a thorough description of this interface.
-/// [rd]: https://rust-analyzer.github.io/manual.html#non-cargo-based-projects
+/// [rd]: https://rust-analyzer.github.io/book/non_cargo_based_projects.html
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Crate {
     /// A name used in the package's project declaration
@@ -294,23 +294,9 @@ fn supports_test_mod(version: &str) -> bool {
     matches!((parts.next(), parts.next()), (Some(major), Some(minor)) if (major, minor) >= (1, 96))
 }
 
-/// Absolute path of the flycheck launcher script that `setup` writes.
-///
-/// `setup` bakes the editor-specific launcher dir into the discover
-/// launcher as `$RULES_RUST_RA_LAUNCHER_DIR`; we read it here so the
-/// flycheck runnable embedded in `rust-project.json` points at the
-/// flycheck binary `setup` copied to the editor-specific launcher dir
-/// (`.vscode/.rules_rust_analyzer/`, `.helix/.rules_rust_analyzer/`,
-/// or `<workspace>/.rules_rust_analyzer/`). The filename comes from
-/// `crate::FLYCHECK_BINARY_FILENAME` so it stays in lockstep with the
-/// setup-side copy (including the `.exe` on Windows).
-///
-/// When the env var is unset (discover invoked outside a setup
-/// install — direct exec for debugging) we fall back to
-/// `<workspace>/.rules_rust_analyzer/`, the editor-agnostic default.
-/// The fallback is only "right" for neovim/print users; vscode/helix
-/// users who bypass setup will get a stale path, which matches every
-/// other fallback in this code.
+/// Prefers `$RULES_RUST_RA_LAUNCHER_DIR` (published by discover's
+/// `self_locate_config`). Falls back to
+/// `<workspace>/.rules_rust_analyzer/` for direct-exec debugging.
 fn flycheck_launcher_path(workspace: &Utf8Path) -> Utf8PathBuf {
     let launcher_dir = std::env::var("RULES_RUST_RA_LAUNCHER_DIR")
         .ok()
@@ -499,12 +485,10 @@ pub fn assemble_rust_project(
             cwd: workspace.to_owned(),
             kind: RunnableKind::Check,
         },
-        // On-save flycheck. rust-analyzer substitutes `{label}` with
-        // the saved file's owning crate and runs the binary; the
-        // binary spawns `bazel build` for that label with rustc
-        // diagnostics enabled, harvests the resulting .rustc-output
-        // files via BEP, and streams their JSON to stdout for
-        // rust-analyzer to parse into squiggles.
+        // On-save flycheck. Args stay user-agnostic — per-user
+        // preferences (clippy, ...) live in
+        // `<launcher_dir>/user_config.json` and are read by
+        // `bin/flycheck.rs` on each save.
         Runnable {
             program: flycheck_launcher_path(workspace).to_string(),
             args: vec!["{label}".to_owned(), "{saved_file}".to_owned()],
@@ -865,6 +849,36 @@ mod tests {
 
         assert_eq!(project.crates.len(), 1);
         assert_eq!(project.crates[0].deps.len(), 0);
+    }
+
+    /// The runnable command must be byte-identical across users regardless
+    /// of clippy preference — flycheck reads its own per-user opt-in from
+    /// `user_config.json` on each save. If this ever regresses to
+    /// per-user command args, the CLI contract with `bin/flycheck.rs`
+    /// silently breaks (clap rejects unknown flags at runtime).
+    #[test]
+    fn flycheck_runnable_uses_positional_args_only() {
+        let project = assemble_rust_project(
+            Utf8Path::new("bazel"),
+            Utf8Path::new("workspace"),
+            ToolchainInfo {
+                sysroot: "sysroot".to_owned().into(),
+                sysroot_src: "sysroot_src".to_owned().into(),
+                version: String::new(),
+            },
+            &BTreeSet::from([spec("ID-a", &[])]),
+        )
+        .expect("expect success");
+
+        let flycheck = project
+            .runnables
+            .iter()
+            .find(|r| matches!(r.kind, RunnableKind::Flycheck))
+            .expect("flycheck runnable must exist");
+        assert_eq!(
+            flycheck.args,
+            vec!["{label}".to_owned(), "{saved_file}".to_owned()],
+        );
     }
 
     // --- diagnose() suite ---

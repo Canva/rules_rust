@@ -76,6 +76,7 @@ rust_proc_macro(
         "@rules_rust//rust/platform:powerpc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv32imac-unknown-none-elf": [],
         "@rules_rust//rust/platform:riscv32imc-unknown-none-elf": [],
+        "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-none-elf": [],
         "@rules_rust//rust/platform:s390x-unknown-linux-gnu": [],
@@ -108,8 +109,8 @@ rust_proc_macro(
     }),
     version = "0.59.3",
     deps = [
-        "@rmdbi__proc-macro2-1.0.106//:proc_macro2",
-        "@rmdbi__quote-1.0.46//:quote",
-        "@rmdbi__syn-2.0.118//:syn",
+        "@rmdbi__proc-macro2-1.0.107//:proc_macro2",
+        "@rmdbi__quote-1.0.47//:quote",
+        "@rmdbi__syn-2.0.119//:syn",
     ],
 )

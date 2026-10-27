@@ -76,6 +76,7 @@ rust_library(
         "@rules_rust//rust/platform:powerpc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv32imac-unknown-none-elf": [],
         "@rules_rust//rust/platform:riscv32imc-unknown-none-elf": [],
+        "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-none-elf": [],
         "@rules_rust//rust/platform:s390x-unknown-linux-gnu": [],
@@ -108,7 +109,7 @@ rust_library(
     }),
     version = "0.9.0",
     deps = [
-        "@cui__bitflags-2.13.0//:bitflags",
+        "@cui__bitflags-2.13.2//:bitflags",
         "@cui__bstr-1.6.0//:bstr",
         "@cui__gix-attributes-0.24.0//:gix_attributes",
         "@cui__gix-config-value-0.14.11//:gix_config_value",

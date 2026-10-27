@@ -4,20 +4,28 @@ Common definitions for the `@rules_rust//cargo` package
 """
 
 load(
-    "//cargo/private:cargo_bootstrap.bzl",
+    "//cargo:cargo_bootstrap_repository.bzl",
     _cargo_bootstrap_repository = "cargo_bootstrap_repository",
-    _cargo_env = "cargo_env",
 )
 load(
-    "//cargo/private:cargo_build_script_wrapper.bzl",
+    "//cargo:cargo_build_script.bzl",
     _cargo_build_script = "cargo_build_script",
 )
 load(
-    "//cargo/private:cargo_dep_env.bzl",
+    "//cargo:cargo_dep_env.bzl",
     _cargo_dep_env = "cargo_dep_env",
 )
 load(
-    "//cargo/private:cargo_lints.bzl",
+    "//cargo:cargo_env.bzl",
+    _cargo_env = "cargo_env",
+)
+load(
+    "//cargo:cargo_toolchain.bzl",
+    _cargo_toolchain = "cargo_toolchain",
+    _cargo_toolchain_alias = "cargo_toolchain_alias",
+)
+load(
+    "//cargo:extract_cargo_lints.bzl",
     _extract_cargo_lints = "extract_cargo_lints",
 )
 load("//cargo/private:cargo_toml_env_vars.bzl", _cargo_toml_env_vars = "cargo_toml_env_vars")
@@ -27,6 +35,9 @@ cargo_env = _cargo_env
 
 cargo_build_script = _cargo_build_script
 cargo_dep_env = _cargo_dep_env
+
+cargo_toolchain = _cargo_toolchain
+cargo_toolchain_alias = _cargo_toolchain_alias
 
 extract_cargo_lints = _extract_cargo_lints
 

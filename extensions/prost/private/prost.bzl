@@ -1,5 +1,6 @@
 """Rules for building protos in Rust with Prost and Tonic."""
 
+load("@rules_cc//cc:find_cc_toolchain.bzl", "use_cc_toolchain")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_proto//proto:defs.bzl", "ProtoInfo", "proto_common")
 load("@rules_proto//proto:proto_common.bzl", proto_toolchains = "toolchains")
@@ -368,13 +369,8 @@ rust_prost_aspect = aspect(
     attr_aspects = ["deps"],
     attrs = {
         "_collect_cc_coverage": attr.label(
-            default = Label("@rules_rust//util:collect_coverage"),
+            default = Label("@rules_rust//rust/coverage:collect_rust_coverage"),
             executable = True,
-            cfg = "exec",
-        ),
-        "_grep_includes": attr.label(
-            allow_single_file = True,
-            default = Label("@bazel_tools//tools/cpp:grep-includes"),
             cfg = "exec",
         ),
         "_prost_process_wrapper": attr.label(
@@ -392,7 +388,7 @@ rust_prost_aspect = aspect(
     fragments = ["cpp"],
     toolchains = [
         TOOLCHAIN_TYPE,
-        config_common.toolchain_type("@bazel_tools//tools/cpp:toolchain_type", mandatory = False),
+    ] + use_cc_toolchain(mandatory = False) + [
         "@rules_rust//rust:toolchain_type",
         "@rules_rust//rust/rustfmt:toolchain_type",
     ],
@@ -437,7 +433,7 @@ rust_prost_library = rule(
             mandatory = True,
         ),
         "_collect_cc_coverage": attr.label(
-            default = Label("@rules_rust//util:collect_coverage"),
+            default = Label("@rules_rust//rust/coverage:collect_rust_coverage"),
             executable = True,
             cfg = "exec",
         ),
@@ -501,7 +497,7 @@ rust_prost_toolchain = rule(
             doc = "Additional options to add to Prost.",
         ),
         "prost_plugin": attr.label(
-            doc = "Additional plugins to add to Prost.",
+            doc = "The Prost `protoc` plugin (e.g. `protoc-gen-prost`) to invoke.",
             cfg = "exec",
             executable = True,
             mandatory = True,
@@ -530,7 +526,7 @@ rust_prost_toolchain = rule(
             doc = "Additional options to add to Tonic.",
         ),
         "tonic_plugin": attr.label(
-            doc = "Additional plugins to add to Tonic.",
+            doc = "The Tonic `protoc` plugin (e.g. `protoc-gen-tonic`) to invoke.",
             cfg = "exec",
             executable = True,
         ),

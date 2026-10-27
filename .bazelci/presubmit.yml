@@ -87,14 +87,27 @@ split_coverage_postprocessing_shell_commands: &split_coverage_postprocessing_she
   - echo "coverage --experimental_fetch_all_coverage_outputs" >> user.bazelrc
   - echo "coverage --experimental_split_coverage_postprocessing" >> user.bazelrc
   - echo "build --//rust/settings:experimental_use_coverage_metadata_files" >> user.bazelrc
+coverage_flags: &coverage_flags
+  - "--instrumentation_filter=^//"
+  - "--instrument_test_targets"
+# Apple clang emits an older LLVM profile record layout than rustc 1.99's
+# LLVM 23. An image that mixes instrumented C and Rust crashes at exit, so the
+# one package whose test links both is not instrumented on macOS. The tests
+# still run under coverage. See COVERAGE_PROFILE_ABI_MISMATCH.md.
+macos_coverage_flags: &macos_coverage_flags
+  - "--instrumentation_filter=^//,-^//test/cc_shared_library[/:]"
+  - "--instrument_test_targets"
 rbe_coverage_flags: &rbe_coverage_flags
   # https://github.com/bazelbuild/bazel/issues/20578
   - "--strategy=CoverageReport=local"
+  - "--instrumentation_filter=^//"
+  - "--instrument_test_targets"
 tasks:
   ubuntu2204:
     build_targets: *default_linux_targets
     test_targets: *default_linux_targets
     coverage_targets: *default_linux_targets
+    coverage_flags: *coverage_flags
     post_shell_commands: *coverage_validation_post_shell_commands
     run_targets:
       - //test:query_test_binary
@@ -112,6 +125,7 @@ tasks:
     build_targets: *default_macos_targets
     test_targets: *default_macos_targets
     coverage_targets: *default_macos_targets
+    coverage_flags: *macos_coverage_flags
     post_shell_commands: *coverage_validation_post_shell_commands
   windows:
     build_targets: *default_windows_targets
@@ -129,12 +143,14 @@ tasks:
     platform: ubuntu2204
     shell_commands: *split_coverage_postprocessing_shell_commands
     coverage_targets: *default_linux_targets
+    coverage_flags: *coverage_flags
     post_shell_commands: *coverage_validation_post_shell_commands
   macos_split_coverage_postprocessing:
     name: Split Coverage Postprocessing
     platform: macos_arm64
     shell_commands: *split_coverage_postprocessing_shell_commands
     coverage_targets: *default_macos_targets
+    coverage_flags: *macos_coverage_flags
     post_shell_commands: *coverage_validation_post_shell_commands
   ubuntu2204_opt:
     name: Opt Mode
@@ -170,6 +186,7 @@ tasks:
     build_targets: *default_linux_targets
     test_targets: *default_linux_targets
     coverage_targets: *default_linux_targets
+    coverage_flags: *coverage_flags
     post_shell_commands: *coverage_validation_post_shell_commands
   rbe_ubuntu2204_with_aspects:
     name: With Aspects
@@ -204,6 +221,7 @@ tasks:
     build_targets: *default_macos_targets
     test_targets: *default_macos_targets
     coverage_targets: *default_macos_targets
+    coverage_flags: *macos_coverage_flags
     post_shell_commands: *coverage_validation_post_shell_commands
   macos_rolling_with_aspects:
     name: "Macos Rolling Bazel Version With Aspects"
@@ -212,6 +230,7 @@ tasks:
     build_targets: *default_macos_targets
     test_targets: *default_macos_targets
     coverage_targets: *default_macos_targets
+    coverage_flags: *macos_coverage_flags
     post_shell_commands: *coverage_validation_post_shell_commands
     soft_fail: yes
     bazel: "rolling"
@@ -371,6 +390,7 @@ tasks:
     build_targets: *default_linux_targets
     test_targets: *default_linux_targets
     coverage_targets: *default_linux_targets
+    coverage_flags: *coverage_flags
     post_shell_commands: *coverage_validation_post_shell_commands
   linux_docs:
     name: Docs
@@ -399,6 +419,8 @@ tasks:
       - "//tools/rust_analyzer:gen_rust_project"
       - "//tools/rust_analyzer:discover_bazel_rust_project"
       - "//test/rust_analyzer:rust_analyzer_test"
+      - "//test/rust_analyzer:partial_failure_test"
+      - "//test/rust_analyzer:flycheck_clippy_test"
   ide_integration_tests_macos:
     name: IDE VSCode Tests
     platform: macos_arm64
@@ -408,6 +430,8 @@ tasks:
       - "//tools/rust_analyzer:gen_rust_project"
       - "//tools/rust_analyzer:discover_bazel_rust_project"
       - "//test/rust_analyzer:rust_analyzer_test"
+      - "//test/rust_analyzer:partial_failure_test"
+      - "//test/rust_analyzer:flycheck_clippy_test"
   ide_integration_tests_windows:
     name: IDE VSCode Tests
     platform: windows
@@ -432,6 +456,7 @@ tasks:
     build_targets: *default_linux_targets
     test_targets: *default_linux_targets
     coverage_targets: *default_linux_targets
+    coverage_flags: *coverage_flags
     post_shell_commands: *coverage_validation_post_shell_commands
   path_mapping_rbe_ubuntu2204:
     name: Path Mapping RBE
@@ -466,6 +491,7 @@ tasks:
     build_targets: *default_macos_targets
     test_targets: *default_macos_targets
     coverage_targets: *default_macos_targets
+    coverage_flags: *macos_coverage_flags
     post_shell_commands: *coverage_validation_post_shell_commands
   # TODO: path_mapping requires sandboxing
   # https://github.com/bazelbuild/bazel/issues/7480

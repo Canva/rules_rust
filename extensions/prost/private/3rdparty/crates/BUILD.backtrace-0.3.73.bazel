@@ -80,6 +80,7 @@ rust_library(
         "@rules_rust//rust/platform:powerpc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv32imac-unknown-none-elf": [],
         "@rules_rust//rust/platform:riscv32imc-unknown-none-elf": [],
+        "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-none-elf": [],
         "@rules_rust//rust/platform:s390x-unknown-linux-gnu": [],
@@ -112,7 +113,7 @@ rust_library(
     }),
     version = "0.3.73",
     deps = [
-        "@rrprd__backtrace-0.3.73//:build_script_build",
+        ":build_script_build",
         "@rrprd__cfg-if-1.0.0//:cfg_if",
         "@rrprd__rustc-demangle-0.1.24//:rustc_demangle",
     ] + select({
@@ -255,6 +256,12 @@ rust_library(
             "@rrprd__object-0.36.3//:object",  # cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))
         ],
         "@rules_rust//rust/platform:riscv32imc-unknown-none-elf": [
+            "@rrprd__addr2line-0.22.0//:addr2line",  # cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))
+            "@rrprd__libc-0.2.158//:libc",  # cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))
+            "@rrprd__miniz_oxide-0.7.4//:miniz_oxide",  # cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))
+            "@rrprd__object-0.36.3//:object",  # cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))
+        ],
+        "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia": [
             "@rrprd__addr2line-0.22.0//:addr2line",  # cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))
             "@rrprd__libc-0.2.158//:libc",  # cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))
             "@rrprd__miniz_oxide-0.7.4//:miniz_oxide",  # cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))
@@ -432,6 +439,9 @@ cargo_build_script(
         include = ["**/*.rs"],
         allow_empty = True,
     ),
+    build_script_env_files = [
+        ":cargo_toml_env_vars",
+    ],
     compile_data = glob(
         include = ["**"],
         allow_empty = True,

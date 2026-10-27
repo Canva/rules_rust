@@ -319,14 +319,15 @@ _CRATE_EDITIONS = {
 _NORMAL_DEPENDENCIES = {
     "tools/rust_analyzer/3rdparty": {
         _COMMON_CONDITION: {
-            "anyhow": Label("//anyhow-1.0.102"),
-            "camino": Label("//camino-1.2.2"),
-            "clap": Label("//clap-4.6.0"),
-            "env_logger": Label("//env_logger-0.11.10"),
-            "itertools": Label("//itertools-0.14.0"),
-            "log": Label("//log-0.4.29"),
-            "serde": Label("//serde-1.0.228"),
-            "serde_json": Label("//serde_json-1.0.149"),
+            "anyhow": Label("@rrra//anyhow-1.0.102"),
+            "camino": Label("@rrra//camino-1.2.2"),
+            "clap": Label("@rrra//clap-4.6.0"),
+            "env_logger": Label("@rrra//env_logger-0.11.10"),
+            "itertools": Label("@rrra//itertools-0.14.0"),
+            "jsonc-parser": Label("@rrra//jsonc-parser-0.26.2"),
+            "log": Label("@rrra//log-0.4.29"),
+            "serde": Label("@rrra//serde-1.0.228"),
+            "serde_json": Label("@rrra//serde_json-1.0.149"),
         },
     },
 }
@@ -418,6 +419,7 @@ _CONDITIONS = {
     "powerpc-unknown-linux-gnu": ["@rules_rust//rust/platform:powerpc-unknown-linux-gnu"],
     "riscv32imac-unknown-none-elf": ["@rules_rust//rust/platform:riscv32imac-unknown-none-elf"],
     "riscv32imc-unknown-none-elf": ["@rules_rust//rust/platform:riscv32imc-unknown-none-elf"],
+    "riscv64gc-unknown-fuchsia": ["@rules_rust//rust/platform:riscv64gc-unknown-fuchsia"],
     "riscv64gc-unknown-linux-gnu": ["@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu"],
     "riscv64gc-unknown-none-elf": ["@rules_rust//rust/platform:riscv64gc-unknown-none-elf"],
     "s390x-unknown-linux-gnu": ["@rules_rust//rust/platform:s390x-unknown-linux-gnu"],
@@ -685,6 +687,16 @@ def crate_repositories():
 
     maybe(
         http_archive,
+        name = "rrra__jsonc-parser-0.26.2",
+        sha256 = "b558af6b49fd918e970471374e7a798b2c9bbcda624a210ffa3901ee5614bc8e",
+        type = "tar.gz",
+        urls = ["https://static.crates.io/crates/jsonc-parser/0.26.2/download"],
+        strip_prefix = "jsonc-parser-0.26.2",
+        build_file = Label("//tools/rust_analyzer/3rdparty/crates:BUILD.jsonc-parser-0.26.2.bazel"),
+    )
+
+    maybe(
+        http_archive,
         name = "rrra__log-0.4.29",
         sha256 = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897",
         type = "tar.gz",
@@ -900,6 +912,7 @@ def crate_repositories():
         struct(repo = "rrra__clap-4.6.0", is_dev_dep = False),
         struct(repo = "rrra__env_logger-0.11.10", is_dev_dep = False),
         struct(repo = "rrra__itertools-0.14.0", is_dev_dep = False),
+        struct(repo = "rrra__jsonc-parser-0.26.2", is_dev_dep = False),
         struct(repo = "rrra__log-0.4.29", is_dev_dep = False),
         struct(repo = "rrra__serde-1.0.228", is_dev_dep = False),
         struct(repo = "rrra__serde_json-1.0.149", is_dev_dep = False),

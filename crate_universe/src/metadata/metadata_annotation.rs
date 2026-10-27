@@ -221,7 +221,12 @@ impl LockfileAnnotation {
             .filter(|node| !is_workspace_member(&node.id))
             .collect();
 
-        // Produce source annotations for each crate in the resolve graph
+        // Produce source annotations for each crate in the resolve graph.
+        //
+        // `reqwest` is built with `rustls-no-provider`, so a crypto provider has to be
+        // installed before the first client is constructed. Installing is idempotent
+        // enough for our purposes: a second call fails only because one is already set.
+        let _ = rustls::crypto::ring::default_provider().install_default();
         let http_client = Client::new();
         let crates = nodes
             .iter()

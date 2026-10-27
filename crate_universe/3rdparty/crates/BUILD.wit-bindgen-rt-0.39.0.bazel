@@ -83,6 +83,7 @@ rust_library(
         "@rules_rust//rust/platform:powerpc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv32imac-unknown-none-elf": [],
         "@rules_rust//rust/platform:riscv32imc-unknown-none-elf": [],
+        "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-none-elf": [],
         "@rules_rust//rust/platform:s390x-unknown-linux-gnu": [],
@@ -115,8 +116,8 @@ rust_library(
     }),
     version = "0.39.0",
     deps = [
-        "@cui__bitflags-2.13.0//:bitflags",
-        "@cui__wit-bindgen-rt-0.39.0//:build_script_build",
+        ":build_script_build",
+        "@cui__bitflags-2.13.2//:bitflags",
     ],
 )
 
@@ -126,6 +127,9 @@ cargo_build_script(
         include = ["**/*.rs"],
         allow_empty = True,
     ),
+    build_script_env_files = [
+        ":cargo_toml_env_vars",
+    ],
     compile_data = glob(
         include = ["**"],
         allow_empty = True,

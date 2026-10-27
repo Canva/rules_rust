@@ -32,7 +32,7 @@ jobs:
         if: startsWith(github.ref, 'refs/heads/main')
         run: |
           git fetch origin &> /dev/null
-          version="$(grep 'VERSION =' ${{ github.workspace }}/version.bzl | grep -o '[[:digit:]][[:alnum:].+-]*')"
+          version="$(grep 'VERSION =' ${{ github.workspace }}/version.bzl | sed 's/VERSION = "//' | sed 's/"//')"
           if [[ -n "$(git tag -l ${version})" ]]; then
             echo "A release '${version}' already exists." >&2
             exit 1
@@ -47,7 +47,7 @@ jobs:
       matrix:
         # Create a job for each target triple
         include:
-          - os: macOS-14
+          - os: macos-15
             env:
               TARGET: "aarch64-apple-darwin"
           - os: ubuntu-22.04
@@ -147,7 +147,7 @@ jobs:
         id: create_tag
         run: |
           set -euo pipefail
-          version="$(grep 'VERSION =' ${{ github.workspace }}/version.bzl | grep -o '[[:digit:]][[:alnum:].+-]*')"
+          version="$(grep 'VERSION =' ${{ github.workspace }}/version.bzl | sed 's/VERSION = "//' | sed 's/"//')"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Pin the tag to the resolved SHA so a concurrent merge to main

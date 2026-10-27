@@ -83,6 +83,7 @@ rust_library(
         "@rules_rust//rust/platform:powerpc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv32imac-unknown-none-elf": [],
         "@rules_rust//rust/platform:riscv32imc-unknown-none-elf": [],
+        "@rules_rust//rust/platform:riscv64gc-unknown-fuchsia": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-linux-gnu": [],
         "@rules_rust//rust/platform:riscv64gc-unknown-none-elf": [],
         "@rules_rust//rust/platform:s390x-unknown-linux-gnu": [],
@@ -115,12 +116,12 @@ rust_library(
     }),
     version = "0.22.4",
     deps = [
+        ":build_script_build",
         "@cui__cfg-if-1.0.0//:cfg_if",
-        "@cui__combine-4.6.7//:combine",
-        "@cui__jni-0.22.4//:build_script_build",
+        "@cui__combine-4.6.9//:combine",
         "@cui__jni-sys-0.4.1//:jni_sys",
         "@cui__log-0.4.19//:log",
-        "@cui__simd_cesu8-1.1.1//:simd_cesu8",
+        "@cui__simd_cesu8-1.2.0//:simd_cesu8",
         "@cui__thiserror-2.0.4//:thiserror",
     ] + select({
         "@rules_rust//rust/platform:aarch64-pc-windows-msvc": [
@@ -142,6 +143,9 @@ cargo_build_script(
         include = ["**/*.rs"],
         allow_empty = True,
     ),
+    build_script_env_files = [
+        ":cargo_toml_env_vars",
+    ],
     compile_data = glob(
         include = ["**"],
         allow_empty = True,

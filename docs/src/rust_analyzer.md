@@ -19,9 +19,19 @@ subcommand — `setup` is re-runnable any time.
    ```
 3. Reload the VSCode window.
 
-Existing user keys in `.vscode/settings.json` are preserved on re-runs.
-Pass `--dry-run` to preview the JSON without writing it; `--replace` to
-overwrite all managed keys (destroys user keys).
+`.vscode/settings.json` is always written; a `*.code-workspace` at
+the workspace root is picked up too. Existing user keys and comments
+survive re-runs, so `.vscode/settings.json` and `.code-workspace` are
+safe to commit.
+
+Add the launcher dir to `.gitignore`:
+
+```
+.vscode/.rules_rust_analyzer/
+```
+
+Re-run `setup` after a toolchain change (rustup update, `MODULE.bazel`
+edit, `bazel clean --expunge`).
 
 ### Neovim
 
@@ -58,18 +68,28 @@ same keys via plugin-specific config files.
 
 ## Flags
 
-Re-runnable at any time. All flags work on any subcommand.
+Re-runnable at any time. Global flags work on any subcommand.
 
 | Flag | Effect |
 |---|---|
 | `--skip-proc-macro-server` | Don't manage the proc-macro key. |
 | `--skip-rustfmt` | Don't manage the formatter key (use host rustfmt). |
-| `--output-user-root <abs-path>` | `--output_user_root` for flycheck's dedicated Bazel server. Required on Windows for non-trivial workspaces (MAX_PATH). |
-| `--cache-dir <abs-path>` | Where discover writes its merged-JSON cache. |
-| `--per-package-workspaces` | Opt in to per-package workspace splitting (see below). |
+| `--per-package-workspaces` / `--no-per-package-workspaces` | Opt this developer in/out of per-package workspace splitting (see below). |
+| `--clippy` / `--no-clippy` | Opt this developer in/out of running clippy on save and streaming its diagnostics alongside rustc's. |
+| `--clean` | Delete `<launcher-dir>/cache/` before running the rest of setup. See Troubleshooting. |
 
-VSCode subcommand also accepts `--dry-run` (preview JSON without writing) and
-`--replace` (overwrite all managed keys, destroying user keys).
+The `--clippy` and `--per-package-workspaces` toggles are **per-user**: they mutate `<launcher-dir>/user_config.json` (gitignored) instead of the shared committed settings file. Two developers on the same workspace can hold different preferences without touching the checked-in configuration. Editing `user_config.json` by hand works too.
+
+The `vscode` subcommand adds:
+
+| Flag | Effect |
+|---|---|
+| `--settings-json <path>` | Override the settings.json output. Defaults to `<workspace>/.vscode/settings.json`. |
+| `--code-workspace <path>` | `.code-workspace` file to also update. Required when the workspace root has more than one. |
+| `--no-code-workspace` | Skip the `.code-workspace` write. |
+| `--settings-key <key>` | Nest managed keys under this key inside the `.code-workspace` (default: `settings`). |
+| `--dry-run` | Print each would-be-written file to stdout. |
+| `--replace` | Overwrite managed keys instead of merging. Sibling `folders` / `tasks` / `extensions` in a `.code-workspace` survive. |
 
 ## What you get
 
@@ -82,40 +102,43 @@ VSCode subcommand also accepts `--dry-run` (preview JSON without writing) and
 
 ## Troubleshooting
 
-### Stale or wrong project model
+### Symbols / deps look wrong
 
-Discovery memoizes the assembled `rust-project.json` in a local cache
-keyed on every input. If the IDE shows symbols / deps that don't match
-what `bazel build` actually produces — and re-running discovery
-(restart rust-analyzer, or save a `BUILD` file) doesn't fix it — nuke
-the cache and try again:
+Restart rust-analyzer (or save a `BUILD` file). If that doesn't fix
+it, re-run setup with `--clean` to nuke the discovery cache:
 
 ```
-rm -rf <workspace>/<editor-dir>/.rules_rust_analyzer/cache
+bazel run @rules_rust//tools/rust_analyzer:setup -- --clean vscode
 ```
 
-Where `<editor-dir>` is `.vscode` for VSCode, `.helix` for Helix, or
-empty for Neovim / `print` (cache sits at `<workspace>/.rules_rust_analyzer/cache`).
-
-If you passed `--cache-dir` at setup time, the cache is wherever you
-pointed it instead.
-
-The cache survives `bazel clean` by design (it lives in the workspace,
-not the Bazel output base) so a full Bazel rebuild won't invalidate
-stale entries — that's what the manual `rm -rf` is for.
+Works with any subcommand (`vscode` / `neovim` / `helix` / `print`).
 
 ### Diagnostics stopped appearing
 
-Check `<workspace>/.rules_rust_analyzer/flycheck.log` — the on-save
-wrapper appends one line per internal failure.
+Check `<workspace>/.rules_rust_analyzer/flycheck.log`.
 
 ### After `bazel clean --expunge` or toolchain changes
 
-Re-run `setup`. The launcher scripts reference the rust-analyzer /
-rustfmt / proc-macro-srv binaries by absolute path baked at install
-time. Those binaries live in Bazel's output_base; `--expunge` clears
-that, and toolchain changes move them to new paths. Re-running setup
-resolves the new paths and refreshes the launchers.
+Re-run `setup`.
+
+### Noisy `cargo metadata` errors on startup
+
+`setup` does not manage `rust-analyzer.files.excludeDirs`. If your
+workspace has stub `Cargo.toml` files that aren't meant to be
+auto-loaded (common in `rules_rust` itself under `examples/`,
+`crate_universe/`, etc.), rust-analyzer still finds them and logs
+errors. Silence them by adding the directory names to `settings.json`
+yourself — your entries survive future `setup` runs:
+
+```
+"rust-analyzer.files.excludeDirs": ["examples", "some_other_dir"]
+```
+
+Trade-off: `files.excludeDirs` also hides those sources from
+rust-analyzer's virtual filesystem, so files under those directories
+won't get IDE features even if they're part of a Bazel-discovered
+crate. Only exclude directories whose sources you're willing to lose
+IDE support on.
 
 ## Workspace splitting
 
@@ -132,20 +155,14 @@ Switch any time by re-running `setup` with or without the flag.
 ## Debugging
 
 The `▶ Debug` codelens VSCode renders next to `#[test]` functions
-**does not work** — the VSCode rust-analyzer extension's debug handler
-only supports cargo-shaped runnables, and Bazel projects emit shell
-runnables. Lifting this needs an upstream PR.
-
-The supported debug path is `.vscode/launch.json` + F5:
+**does not work** for Bazel projects. Use `.vscode/launch.json` + F5
+instead:
 
 ```
 bazel run @rules_rust//tools/vscode:gen_launch_json
 ```
 
-Writes a per-target launch config that uses CodeLLDB's
-`targetCreateCommands` to build with `--compilation_mode=dbg
---strip=never` and attach LLDB. Install
+Install
 [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
-first. Set a breakpoint inside the test you care about and re-run the
-target — libtest selects tests inside the binary, so one launch config
-covers every test in the target.
+first. Set a breakpoint inside the test and run the target — one
+launch config covers every test in that binary.
