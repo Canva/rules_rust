@@ -2,3 +2,4 @@
 nto = "nto"  # For toolchains
 flate = "flate"  # https://crates.io/crates/flate2
 ba = "ba"  # Used in protoc_wrapper.rs with "baR"
+canva = "canva"  # Canva fork: the +canva.N version suffix
