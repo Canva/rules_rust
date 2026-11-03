@@ -1,0 +1,29 @@
+# buildifier: disable=bzl-visibility
+load("//rust/private:rust.bzl", "rust_binary_without_process_wrapper", "rust_test_without_process_wrapper_test")
+
+# The persistent-worker front end for //util/process_wrapper (see main.rs). A binary of its own so
+# that the process wrapper, an input of every Rustc action, stays byte-identical to upstream's:
+# actions that do not use the worker keep their action keys, and so their remote cache entries.
+rust_binary_without_process_wrapper(
+    name = "worker",
+    srcs = glob(["*.rs"]),
+    allocator_libraries = select({
+        "@rules_rust//rust/settings:experimental_use_allocator_libraries_with_mangled_symbols_on": "@rules_rust//ffi/rs:allocator_libraries_with_mangling_support_without_process_wrapper",
+        "//conditions:default": "@rules_rust//ffi/rs:empty_allocator_libraries",
+    }),
+    edition = "2021",
+    # Built deterministically, like the process wrapper: see the comment there.
+    rustc_flags = select({
+        "@platforms//os:linux": ["-Cstrip=debuginfo"],
+        "@platforms//os:macos": ["-Cstrip=symbols"],
+        "@platforms//os:windows": ["-Cstrip=debuginfo"],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:public"],
+)
+
+rust_test_without_process_wrapper_test(
+    name = "worker_test",
+    crate = ":worker",
+    edition = "2021",
+)

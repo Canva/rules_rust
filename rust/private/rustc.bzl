@@ -1052,7 +1052,8 @@ def construct_arguments(
         error_format = None,
         allowed_unstable_rust_features = None,
         link_std_dylib = False,
-        bin_link_flags = None):
+        bin_link_flags = None,
+        use_persistent_worker = False):
     """Builds an Args object containing common rustc flags
 
     Args:
@@ -1126,6 +1127,11 @@ def construct_arguments(
         allowed_unstable_rust_features (list, optional): List of unstable Rust language features allowed for this target.
         link_std_dylib (bool): Whether to dynamically link the Rust standard library using `--prefer-dynamic`.
         bin_link_flags (File, optional): Binary-scoped build-script arguments, selected by `cargo_bin_name`.
+        use_persistent_worker (bool): Lay the arguments out for a Bazel persistent worker: every
+            `Args` goes into a flag file (`--flagfile=` for the process wrapper's own arguments,
+            which it expands itself when run one-shot; `@` for rustc's), so that the worker's
+            startup command is the bare process wrapper and the whole command line travels in
+            the work request.
 
     Returns:
         tuple: A tuple of the following items
@@ -1256,6 +1262,16 @@ def construct_arguments(
         rustc_path.add(tool_file)
     else:
         rustc_path.add(tool_path)
+
+    if use_persistent_worker:
+        # Bazel splits a worker action's command line into the worker's startup arguments (which
+        # key the pool of workers) and the flag files, whose lines become the work request. With
+        # every argument in a flag file the startup command is just the process wrapper, and one
+        # pool of workers serves every crate. Run one-shot, the process wrapper expands
+        # `--flagfile=` itself (rustc expands `@` files).
+        for worker_args in [process_wrapper_flags, rustc_path]:
+            worker_args.set_param_file_format("multiline")
+            worker_args.use_param_file("--flagfile=%s", use_always = True)
 
     # If we're emitting an object file, remove any `-Ccodegen-units=` flags.
     # The build rules expect to see a single object file, not the multiple
@@ -1612,6 +1628,10 @@ def construct_arguments(
     rust_flags_args = None
     if type(rust_flags) == "Args":
         rust_flags_args = rust_flags
+        if use_persistent_worker:
+            # Part of the request too, not of the worker's startup arguments.
+            rust_flags_args.set_param_file_format("multiline")
+            rust_flags_args.use_param_file("@%s", use_always = True)
     elif rust_flags:
         for flag in _extract_allowed_unstable_features_from_flags(rust_flags, all_allowed_unstable_features):
             if type(flag) in ["tuple", "list"] and len(flag) == 2:
@@ -1939,6 +1959,30 @@ def rustc_compile_action(
     else:
         link_std_dylib = toolchain._link_std_dylib
 
+    # Persistent workers (`--@rules_rust//rust/settings:experimental_persistent_worker`): the
+    # action runs the worker front end (`//util/process_wrapper/worker`) with the process wrapper
+    # as a tool, advertises `supports-workers` and lays its command line out for a worker (see
+    # `construct_arguments`). Only for the crates of the main repository, the ones an edit-build
+    # loop recompiles: the worker layout is a different command line, and a crate of an external
+    # repository must keep the one every other build of it has, so that its remote cache entry
+    # (from CI, or from whoever built it before) still matches. The process wrapper itself, an
+    # input of every one of those actions, is untouched by the worker. Incremental compilation
+    # inside the worker is for non-`opt` builds and not the single-object (`cc_common.link`)
+    # layout, which needs one codegen unit.
+    process_wrapper_worker = getattr(ctx.executable, "_process_wrapper_worker", None)
+    use_persistent_worker = (
+        bool(ctx.executable._process_wrapper) and
+        bool(process_wrapper_worker) and
+        hasattr(ctx.attr, "_experimental_persistent_worker") and
+        ctx.attr._experimental_persistent_worker[BuildSettingInfo].value and
+        ctx.label.workspace_name == ""
+    )
+    use_incremental = (
+        use_persistent_worker and
+        ctx.var["COMPILATION_MODE"] != "opt" and
+        output_o == None
+    )
+
     args, env_from_args = construct_arguments(
         ctx = ctx,
         attr = attr,
@@ -1965,6 +2009,7 @@ def rustc_compile_action(
         require_explicit_unstable_features = require_explicit_unstable_features,
         allowed_unstable_rust_features = allowed_unstable_rust_features,
         link_std_dylib = link_std_dylib,
+        use_persistent_worker = use_persistent_worker,
     )
 
     args_metadata = None
@@ -1994,12 +2039,29 @@ def rustc_compile_action(
             require_explicit_unstable_features = require_explicit_unstable_features,
             allowed_unstable_rust_features = allowed_unstable_rust_features,
             link_std_dylib = link_std_dylib,
+            use_persistent_worker = use_persistent_worker,
         )
 
     env = dict(ctx.configuration.default_shell_env)
 
     # this is the final list of env vars
-    env.update(env_from_args)
+    if use_persistent_worker:
+        # The environment is part of the key Bazel pools workers by. Keep the per-crate variables
+        # out of it: the process wrapper applies them to rustc from the request (`--env`), and
+        # every rustc action shares the workers started with the shell environment alone.
+        for worker_args in [args, args_metadata]:
+            if worker_args == None:
+                continue
+            worker_args.process_wrapper_flags.add_all(
+                ["{}={}".format(k, v) for k, v in sorted(env_from_args.items())],
+                before_each = "--env",
+            )
+        if use_incremental:
+            # The metadata action stops rustc at the rmeta, which leaves no session to reuse, so
+            # only the full compile asks for it (the process wrapper ignores it in a one-shot run).
+            args.process_wrapper_flags.add("--rustc-incremental", "true")
+    else:
+        env.update(env_from_args)
 
     if hasattr(attr, "version") and attr.version != "0.0.0":
         formatted_version = " v{}".format(attr.version)
@@ -2041,13 +2103,46 @@ def rustc_compile_action(
         action_outputs.append(dwo_outputs)  # buildifier: disable=uninitialized
 
     if ctx.executable._process_wrapper:
+        executable = ctx.executable._process_wrapper
+
+        # `tools` is only passed for a worker action: passing it (even empty) turns off the
+        # inference of tools among the inputs, which would change the inputs, and so the keys,
+        # of every other action.
+        worker_tools = {}
+        startup_arguments = []
+        worker_requirements = {}
+        if use_persistent_worker:
+            # The worker front end runs the process wrapper on each request. Its path is the one
+            # startup argument (every other argument is in a flag file): Bazel keys worker pools
+            # by the startup command, which is the same for every crate of a configuration, so
+            # they share one pool per mnemonic. Not path-mapped: the path must be the real one
+            # for the worker, which runs in the execution root, and an action that does not
+            # leave the machine gains nothing from path mapping.
+            executable = process_wrapper_worker
+            worker_tools = {"tools": [ctx.executable._process_wrapper]}
+            worker_startup = ctx.actions.args()
+            worker_startup.add("--process-wrapper", ctx.executable._process_wrapper)
+            startup_arguments = [worker_startup]
+            worker_requirements = {
+                "requires-worker-protocol": "proto",
+                "supports-workers": "1",
+            }
+        incremental_requirements = {}
+        if use_incremental:
+            # An action compiled incrementally in a worker is never a useful remote cache entry,
+            # and the lookup alone (the input tree of a large crate) costs seconds per action. Nor
+            # is it one to execute remotely: `no-remote-exec` keeps the remote strategy from
+            # claiming it ahead of the worker when the strategy list is Bazel's default (remote
+            # first, then worker), so no `--strategy` is needed to get the worker.
+            incremental_requirements = {"no-remote-cache": "1", "no-remote-exec": "1"}
+
         # Run as normal
         ctx.actions.run(
-            executable = ctx.executable._process_wrapper,
+            executable = executable,
             inputs = compile_inputs,
             outputs = action_outputs,
             env = env,
-            arguments = args.all,
+            arguments = startup_arguments + args.all,
             mnemonic = "Rustc",
             progress_message = "Compiling Rust {} {}{} ({} file{})".format(
                 crate_info.type,
@@ -2058,15 +2153,16 @@ def rustc_compile_action(
             ),
             toolchain = "@rules_rust//rust:toolchain_type",
             resource_set = get_rustc_resource_set(toolchain),
-            execution_requirements = {"supports-path-mapping": ""} if args.supports_path_mapping else None,
+            execution_requirements = ({"supports-path-mapping": ""} if args.supports_path_mapping and not use_persistent_worker else {}) | worker_requirements | incremental_requirements,
+            **worker_tools
         )
         if args_metadata:
             ctx.actions.run(
-                executable = ctx.executable._process_wrapper,
+                executable = executable,
                 inputs = compile_inputs,
                 outputs = [build_metadata] + [x for x in [rustc_rmeta_output] if x],
                 env = env,
-                arguments = args_metadata.all,
+                arguments = startup_arguments + args_metadata.all,
                 mnemonic = "RustcMetadata",
                 progress_message = "Compiling Rust metadata {} {}{} ({} file{})".format(
                     crate_info.type,
@@ -2076,7 +2172,8 @@ def rustc_compile_action(
                     "" if len(srcs) == 1 else "s",
                 ),
                 toolchain = "@rules_rust//rust:toolchain_type",
-                execution_requirements = {"supports-path-mapping": ""} if args_metadata.supports_path_mapping else None,
+                execution_requirements = ({"supports-path-mapping": ""} if args_metadata.supports_path_mapping and not use_persistent_worker else {}) | worker_requirements,
+                **worker_tools
             )
     elif hasattr(ctx.executable, "_bootstrap_process_wrapper"):
         # Run without process_wrapper
