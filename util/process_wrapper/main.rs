@@ -17,6 +17,7 @@ mod options;
 mod output;
 mod rustc;
 mod util;
+mod worker;
 
 use std::collections::HashMap;
 use std::fmt;
@@ -26,7 +27,7 @@ use std::process::{exit, Command, ExitStatus, Stdio};
 
 use tinyjson::JsonValue;
 
-use crate::options::options;
+use crate::options::{incremental_dir, options};
 use crate::output::{process_output, LineOutput};
 use crate::rustc::ErrorFormat;
 
@@ -119,11 +120,27 @@ fn process_line(
 }
 
 fn main() -> Result<(), ProcessWrapperError> {
+    // Bazel appends `--persistent_worker` when it starts this binary as a persistent worker;
+    // everything before it is the worker's startup arguments.
+    let argv: Vec<String> = std::env::args().collect();
+    if let Some(index) = argv.iter().position(|arg| arg == "--persistent_worker") {
+        let mut startup_argv = argv;
+        startup_argv.truncate(index);
+        return worker::run(startup_argv).map_err(|e| ProcessWrapperError(e.to_string()));
+    }
+
     let opts = options().map_err(|e| ProcessWrapperError(e.to_string()))?;
 
+    let incremental = opts.rustc_incremental_dir.as_deref().map(|base| {
+        format!(
+            "-Cincremental={}",
+            incremental_dir(base, &opts.child_arguments)
+        )
+    });
     let mut command = Command::new(opts.executable);
     command
         .args(opts.child_arguments)
+        .args(incremental)
         .env_clear()
         .envs(opts.child_environment)
         .stdout(if let Some(stdout_file) = opts.stdout_file {

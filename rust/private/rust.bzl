@@ -696,6 +696,9 @@ RUSTC_ATTRS = {
     "_error_format": attr.label(
         default = Label("//rust/settings:error_format"),
     ),
+    "_experimental_persistent_worker": attr.label(
+        default = Label("//rust/settings:experimental_persistent_worker"),
+    ),
     "_extra_exec_rustc_env": attr.label(
         default = Label("//rust/settings:extra_exec_rustc_env"),
     ),

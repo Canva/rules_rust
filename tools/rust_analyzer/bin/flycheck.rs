@@ -475,8 +475,9 @@ fn query_string_for(workspace: &Utf8Path, saved_file: &Utf8Path) -> Result<Strin
 }
 
 /// `bazel query 'attr(srcs, "<file>", //<package>:*)'` scoped to the
-/// nearest `BUILD.bazel`. Returns the first match — if a file belongs
-/// to several targets, any is correct.
+/// nearest `BUILD.bazel`, with `--output=label_kind` so that a file
+/// owned by several targets resolves to a non-test one when there is
+/// one (see [`pick_label`]).
 fn query_label_for(
     bazel: &Utf8Path,
     workspace: &Utf8Path,
@@ -486,7 +487,7 @@ fn query_label_for(
     let output = Command::new(bazel.as_str())
         .current_dir(workspace)
         .arg("query")
-        .arg("--output=label")
+        .arg("--output=label_kind")
         .arg(&query)
         .output()
         .with_context(|| format!("invoking {bazel} query {query}"))?;
@@ -494,12 +495,31 @@ fn query_label_for(
         let stderr = String::from_utf8_lossy(&output.stderr);
         anyhow::bail!("bazel query failed for {query}: {stderr}");
     }
-    String::from_utf8(output.stdout)
-        .context("bazel query output not UTF-8")?
-        .lines()
-        .find(|l| !l.is_empty())
-        .map(str::to_owned)
+    pick_label(&String::from_utf8(output.stdout).context("bazel query output not UTF-8")?)
         .with_context(|| format!("bazel query {query:?} returned no targets"))
+}
+
+/// Picks the target to build for diagnostics from `--output=label_kind`
+/// lines (`<kind> rule <label>`): the first whose kind is not a test rule,
+/// else the first of all. A `rust_test(crate = ":bin")` or a `rust_test`
+/// over a library's sources owns the same files as the crate it tests, and
+/// building it compiles the crate twice (the crate, then the test harness)
+/// for diagnostics the non-test build already produces.
+fn pick_label(label_kind_output: &str) -> Option<String> {
+    let mut first = None;
+    for line in label_kind_output.lines().filter(|l| !l.trim().is_empty()) {
+        let mut parts = line.split_whitespace();
+        let (Some(kind), Some(label)) = (parts.next(), parts.last()) else {
+            continue;
+        };
+        if first.is_none() {
+            first = Some(label.to_owned());
+        }
+        if !kind.ends_with("_test") {
+            return Some(label.to_owned());
+        }
+    }
+    first
 }
 
 /// Walk up looking for `BUILD.bazel` or `BUILD`. Returns the
@@ -571,6 +591,24 @@ mod tests {
             query_string_for(&workspace, &workspace.join(&rust_src_path)).unwrap(),
             r#"attr(srcs, "//example/library:src/main.rs", //example/library:*)"#
         );
+    }
+
+    #[test]
+    fn pick_label_prefers_the_non_test_owner() {
+        assert_eq!(
+            pick_label("rust_test rule //tools/taz:test\nrust_binary rule //tools/taz:taz\n")
+                .as_deref(),
+            Some("//tools/taz:taz")
+        );
+        assert_eq!(
+            pick_label("rust_test rule //pkg:lib_test\n").as_deref(),
+            Some("//pkg:lib_test")
+        );
+        assert_eq!(
+            pick_label("rust_library rule //pkg:lib\nrust_test rule //pkg:lib_test\n").as_deref(),
+            Some("//pkg:lib")
+        );
+        assert_eq!(pick_label("\n"), None);
     }
 
     #[test]

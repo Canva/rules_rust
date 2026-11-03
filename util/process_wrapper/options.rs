@@ -49,9 +49,22 @@ pub(crate) struct Options {
     pub(crate) rustc_quit_on_rmeta: bool,
     // This controls the output format of rustc messages.
     pub(crate) rustc_output_format: Option<rustc::ErrorFormat>,
+    // If set, rustc compiles incrementally with this directory as `-Cincremental=`. Only set
+    // when this is a persistent worker's request (the worker passes the directory) that asked
+    // for it (`--rustc-incremental true`) and that does not stop rustc at the rmeta (an
+    // interrupted session leaves nothing to reuse).
+    pub(crate) rustc_incremental_dir: Option<String>,
 }
 
 pub(crate) fn options() -> Result<Options, OptionError> {
+    options_from(env::args().collect())
+}
+
+pub(crate) fn options_from(argv: Vec<String>) -> Result<Options, OptionError> {
+    // Flag files first: in a persistent worker Bazel has expanded them already, one-shot runs
+    // expand them here.
+    let argv = expand_flagfiles(argv).map_err(OptionError::Generic)?;
+
     // Process argument list until -- is encountered.
     // Everything after is sent to the child process.
     let mut subst_mapping_raw = None;
@@ -69,9 +82,31 @@ pub(crate) fn options() -> Result<Options, OptionError> {
     let mut output_file = None;
     let mut rustc_quit_on_rmeta_raw = None;
     let mut rustc_output_format_raw = None;
+    let mut env_raw = None;
+    let mut rustc_incremental_raw = None;
+    let mut rustc_incremental_dir_raw = None;
     let mut flags = Flags::new();
     let mut require_explicit_unstable_features = None;
     flags.define_repeated_flag("--subst", "", &mut subst_mapping_raw);
+    flags.define_repeated_flag(
+        "--env",
+        "KEY=VALUE environment variable(s) for the child process, applied before --env-file. \
+         Lets a persistent worker keep per-action variables out of the action's environment \
+         (part of Bazel's worker key) and in the request instead.",
+        &mut env_raw,
+    );
+    flags.define_flag(
+        "--rustc-incremental",
+        "If `true`, compile incrementally when a persistent worker provides a directory \
+         (--rustc-incremental-dir); ignored otherwise.",
+        &mut rustc_incremental_raw,
+    );
+    flags.define_flag(
+        "--rustc-incremental-dir",
+        "Directory for rustc's incremental compilation state; passed by this wrapper's own \
+         persistent worker mode, not by the build rules.",
+        &mut rustc_incremental_dir_raw,
+    );
     flags.define_flag("--stable-status-file", "", &mut stable_status_file_raw);
     flags.define_flag("--volatile-status-file", "", &mut volatile_status_file_raw);
     flags.define_repeated_flag(
@@ -145,10 +180,7 @@ pub(crate) fn options() -> Result<Options, OptionError> {
         &mut require_explicit_unstable_features,
     );
 
-    let mut child_args = match flags
-        .parse(env::args().collect())
-        .map_err(OptionError::FlagError)?
-    {
+    let mut child_args = match flags.parse(argv).map_err(OptionError::FlagError)? {
         ParseOutcome::Help(help) => {
             eprintln!("{help}");
             exit(0);
@@ -160,25 +192,7 @@ pub(crate) fn options() -> Result<Options, OptionError> {
         .to_str()
         .ok_or_else(|| OptionError::Generic("current directory not utf-8".to_owned()))?
         .to_owned();
-    let output_base = {
-        let external = std::path::Path::new(&current_dir).join("external");
-        match std::fs::canonicalize(external) {
-            Ok(canonical) => canonical
-                .parent()
-                .and_then(|p| p.to_str())
-                .unwrap_or(&current_dir)
-                .to_owned(),
-            Err(_) => match std::fs::canonicalize(&current_dir) {
-                Ok(canonical) => canonical
-                    .parent()
-                    .and_then(|p| p.parent())
-                    .and_then(|p| p.to_str())
-                    .unwrap_or(&current_dir)
-                    .to_owned(),
-                Err(_) => current_dir.clone(),
-            },
-        }
-    };
+    let output_base = output_base(&current_dir);
 
     let exec_root = {
         let workspace_name = std::path::Path::new(&current_dir)
@@ -225,7 +239,8 @@ pub(crate) fn options() -> Result<Options, OptionError> {
         stable_status_file_raw.map_or_else(Vec::new, |s| read_stamp_status_to_array(s).unwrap());
     let volatile_stamp_mappings =
         volatile_status_file_raw.map_or_else(Vec::new, |s| read_stamp_status_to_array(s).unwrap());
-    let mut environment_file_block = env_from_files(env_file_raw.unwrap_or_default())?;
+    let mut environment_file_block = env_from_pairs(env_raw.unwrap_or_default())?;
+    environment_file_block.extend(env_from_files(env_file_raw.unwrap_or_default())?);
     if let Some(out_dir) = out_dir_raw.as_deref() {
         // `OUT_DIR` is materialized here (rather than in the action's `env`
         // dict on the rules_rust side) so that the value can flow through
@@ -275,6 +290,12 @@ pub(crate) fn options() -> Result<Options, OptionError> {
         .transpose()?;
 
     let rustc_quit_on_rmeta = rustc_quit_on_rmeta_raw.is_some_and(|s| s == "true");
+    let rustc_incremental_dir =
+        if rustc_incremental_raw.is_some_and(|s| s == "true") && !rustc_quit_on_rmeta {
+            rustc_incremental_dir_raw
+        } else {
+            None
+        };
     let rustc_output_format = rustc_output_format_raw
         .map(|v| match v.as_str() {
             "json" => Ok(rustc::ErrorFormat::Json),
@@ -324,7 +345,48 @@ pub(crate) fn options() -> Result<Options, OptionError> {
         output_file,
         rustc_quit_on_rmeta,
         rustc_output_format,
+        rustc_incremental_dir,
     })
+}
+
+/// The `-Cincremental=` directory for a rustc invocation: `base` plus the configuration segment
+/// of the crate's `--out-dir` (`bazel-out/<configuration>/bin/...`), so that the same crate built
+/// in two configurations (target and exec) does not share, and keep invalidating, one session.
+pub(crate) fn incremental_dir(base: &str, child_arguments: &[String]) -> String {
+    let mut out_dir = None;
+    let mut args = child_arguments.iter();
+    while let Some(arg) = args.next() {
+        if let Some(value) = arg.strip_prefix("--out-dir=") {
+            out_dir = Some(value);
+        } else if arg == "--out-dir" {
+            out_dir = args.next().map(String::as_str);
+        }
+    }
+    let configuration = out_dir
+        .and_then(|dir| {
+            let mut segments = dir.split('/');
+            match (segments.next(), segments.next()) {
+                (Some("bazel-out"), Some(configuration)) if !configuration.is_empty() => {
+                    Some(configuration)
+                }
+                _ => None,
+            }
+        })
+        .unwrap_or("default");
+    format!("{base}/{configuration}")
+}
+
+fn env_from_pairs(pairs: Vec<String>) -> Result<HashMap<String, String>, OptionError> {
+    pairs
+        .into_iter()
+        .map(|pair| {
+            pair.split_once('=')
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                .ok_or_else(|| {
+                    OptionError::Generic(format!("--env expects KEY=VALUE, got '{pair}'"))
+                })
+        })
+        .collect()
 }
 
 fn args_from_file(paths: Vec<String>) -> Result<Vec<String>, OptionError> {
@@ -511,6 +573,94 @@ fn environment_block(
 #[cfg(test)]
 mod test {
     use super::*;
+
+    fn owned(args: &[&str]) -> Vec<String> {
+        args.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn test_incremental_dir_uses_the_configuration() {
+        assert_eq!(
+            incremental_dir(
+                "/base",
+                &owned(&[
+                    "--crate-name=foo",
+                    "--out-dir=bazel-out/k8-fastbuild-ST-1234/bin/tools/foo",
+                ])
+            ),
+            "/base/k8-fastbuild-ST-1234"
+        );
+        assert_eq!(
+            incremental_dir(
+                "/base",
+                &owned(&["--out-dir", "bazel-out/k8-opt-exec/bin/x"])
+            ),
+            "/base/k8-opt-exec"
+        );
+        assert_eq!(
+            incremental_dir("/base", &owned(&["--out-dir=/somewhere/else"])),
+            "/base/default"
+        );
+        assert_eq!(incremental_dir("/base", &[]), "/base/default");
+    }
+
+    #[test]
+    fn test_env_pairs() {
+        let env = env_from_pairs(owned(&["A=1", "B=x=y", "C="])).unwrap();
+        assert_eq!(env["A"], "1");
+        assert_eq!(env["B"], "x=y");
+        assert_eq!(env["C"], "");
+        assert!(env_from_pairs(owned(&["novalue"])).is_err());
+    }
+
+    #[test]
+    fn test_options_env_and_incremental() {
+        let opts = options_from(owned(&[
+            "process_wrapper",
+            "--env",
+            "CARGO_CRATE_NAME=foo",
+            "--rustc-incremental",
+            "true",
+            "--rustc-incremental-dir",
+            "/base",
+            "--",
+            "rustc",
+            "--crate-name=foo",
+        ]))
+        .unwrap();
+        assert_eq!(opts.executable, "rustc");
+        assert_eq!(opts.child_arguments, ["--crate-name=foo"]);
+        assert_eq!(opts.child_environment["CARGO_CRATE_NAME"], "foo");
+        assert_eq!(opts.rustc_incremental_dir.as_deref(), Some("/base"));
+
+        // Without the worker's directory the flag is inert (one-shot execution).
+        let opts = options_from(owned(&[
+            "process_wrapper",
+            "--rustc-incremental",
+            "true",
+            "--",
+            "rustc",
+        ]))
+        .unwrap();
+        assert_eq!(opts.rustc_incremental_dir, None);
+
+        // Stopping at the rmeta leaves no session to reuse: no incremental.
+        let opts = options_from(owned(&[
+            "process_wrapper",
+            "--rustc-incremental",
+            "true",
+            "--rustc-incremental-dir",
+            "/base",
+            "--rustc-quit-on-rmeta",
+            "true",
+            "--rustc-output-format",
+            "rendered",
+            "--",
+            "rustc",
+        ]))
+        .unwrap();
+        assert_eq!(opts.rustc_incremental_dir, None);
+    }
 
     // https://github.com/bazelbuild/rules_rust/issues/4299
     #[test]
