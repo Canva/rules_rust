@@ -1828,6 +1828,17 @@ def rustc_compile_action(
     rustc_output = crate_info.rustc_output
     rustc_rmeta_output = crate_info.rustc_rmeta_output
 
+    # rust-analyzer's flycheck (`--@rules_rust//rust/settings:rustc_output_diagnostics`) reads the
+    # diagnostics of the crate being edited, a crate of the main repository. An external
+    # repository's crate gets no `.rustc-output` file (see `generate_output_diagnostics`) and keeps
+    # the error format's default, `human`, instead of the JSON the diagnostics need: its action is
+    # then the one every other build of the crate has, and its remote cache entry (from CI, or from
+    # whoever built it before) still matches, instead of every external crate of the closure
+    # compiling again the first time a flycheck build reaches it.
+    error_format = None
+    if ctx.label.workspace_name != "" and _rustc_output_diagnostics_on(ctx):
+        error_format = "human"
+
     # Determine whether to use cc_common.link:
     #  * either if experimental_use_cc_common_link is 1,
     #  * or if experimental_use_cc_common_link is -1 and
@@ -1985,6 +1996,7 @@ def rustc_compile_action(
 
     args, env_from_args = construct_arguments(
         ctx = ctx,
+        error_format = error_format,
         attr = attr,
         file = ctx.file,
         toolchain = toolchain,
@@ -2016,6 +2028,7 @@ def rustc_compile_action(
     if build_metadata:
         args_metadata, _ = construct_arguments(
             ctx = ctx,
+            error_format = error_format,
             attr = attr,
             file = ctx.file,
             toolchain = toolchain,
@@ -3379,6 +3392,18 @@ error_format = rule(
     implementation = _error_format_impl,
     build_setting = config.string(flag = True),
 )
+
+def _rustc_output_diagnostics_on(ctx):
+    """Whether `--@rules_rust//rust/settings:rustc_output_diagnostics` is on for this rule.
+
+    Args:
+        ctx (ctx): The rule's context object.
+
+    Returns:
+        bool: True when the rule has the setting and it is on.
+    """
+    setting = getattr(ctx.attr, "_rustc_output_diagnostics", None)
+    return setting != None and setting[RustcOutputDiagnosticsInfo].rustc_output_diagnostics
 
 def get_error_format(attr, attr_name):
     if hasattr(attr, attr_name):
