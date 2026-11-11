@@ -114,6 +114,29 @@ def pipelined_compilation():
         build_setting_default = False,
     )
 
+def experimental_persistent_worker():
+    """Let `Rustc`, `RustcMetadata` and `Clippy` actions run in persistent workers.
+
+    With this flag the actions of the main repository's crates run the process wrapper through its
+    worker front end (`//util/process_wrapper/worker`), advertise `supports-workers`, keep the
+    per-crate environment and all of the process wrapper's arguments in flag files (so every rustc
+    action shares one pool of workers, and every clippy action another) and, in non-`opt` builds,
+    ask the worker to compile with rustc's incremental compilation, whose state the worker keeps
+    under `<output base>/rustc-incremental/<configuration>/<driver>` between builds (rustc's and
+    clippy-driver's apart). The actions still run one-shot (remotely, sandboxed or with
+    `--strategy=Rustc=local`) with the same inputs; only the worker keeps state. They carry no
+    `no-remote-*` requirement, so `--strategy=Rustc=dynamic` (local `worker`, remote `remote`) can
+    race the two: a crate someone has built is a remote cache hit, an edited one an incremental
+    compile in the worker.
+    The process wrapper itself is unchanged, so the actions of external repositories' crates, and
+    every action without this flag, keep the action keys (and remote cache entries) they have
+    without it.
+    """
+    bool_flag(
+        name = "experimental_persistent_worker",
+        build_setting_default = False,
+    )
+
 # buildifier: disable=unnamed-macro
 def experimental_use_cc_common_link():
     """A flag to control whether to link rust_binary and rust_test targets using \

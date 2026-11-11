@@ -37,6 +37,8 @@ load(
     "collect_inputs",
     "construct_arguments",
     "get_error_format",
+    "persistent_worker_for",
+    "persistent_worker_run",
 )
 load(
     "//rust/private:utils.bzl",
@@ -109,7 +111,7 @@ def get_clippy_ready_crate_info(target, aspect_ctx = None):
     else:
         return None
 
-def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, config, output = None, success_marker = None, cap_at_warnings = False, extra_clippy_flags = [], error_format = None, clippy_diagnostics_file = None):
+def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, config, output = None, success_marker = None, cap_at_warnings = False, extra_clippy_flags = [], error_format = None, clippy_diagnostics_file = None, persistent_worker = None):
     """Run clippy with the specified parameters.
 
     Args:
@@ -124,6 +126,10 @@ def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, conf
         extra_clippy_flags (List[str]): A list of extra options to pass to clippy. If not set, every warnings will be turned into errors
         error_format (str): Which error format to use. Must be acceptable by rustc: https://doc.rust-lang.org/beta/rustc/command-line-arguments.html#--error-format-control-how-errors-are-produced
         clippy_diagnostics_file (File): File to output diagnostics to. If None, no diagnostics will be written
+        persistent_worker (struct): From `rustc.bzl`'s `persistent_worker_for`: run clippy through the
+            process wrapper's persistent-worker front end, with incremental compilation state of its own
+            (`<output base>/rustc-incremental/<configuration>/clippy-driver`) in non-`opt` builds, like
+            the crate's `Rustc` action. None runs it one-shot as always.
 
     Returns:
         None
@@ -164,10 +170,30 @@ def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, conf
         lint_files,
     )
 
-    if clippy_diagnostics_file:
-        crate_info_dict = structs.to_dict(crate_info)
-        crate_info_dict["rustc_output"] = clippy_diagnostics_file
-        crate_info = rust_common.create_crate_info(**crate_info_dict)
+    # The process wrapper writes to `--output-file` whenever the crate has a `rustc_output`
+    # (`construct_arguments`). With `rustc_output_diagnostics` that is the Rustc action's
+    # `.rustc-output`, declared and written by that action: Clippy's run must not open it.
+    # Unsandboxed in the one execution root (a persistent worker, `--spawn_strategy=local`) it
+    # found the file read-only once the Rustc action was done ("Unable to open output_file:
+    # Permission denied"), or clobbered it with Clippy's output when it got there first; a sandbox
+    # only hid the stray write. Clippy's own diagnostics file, when there is one, takes the place.
+    crate_info_dict = structs.to_dict(crate_info)
+    crate_info_dict["rustc_output"] = clippy_diagnostics_file
+    crate_info_dict["rustc_rmeta_output"] = None
+    crate_info = rust_common.create_crate_info(**crate_info_dict)
+
+    # Clippy's compile outputs, declared and in a directory of their own. With
+    # `--emit=dep-info,metadata` under rustc's default names they went to the crate's `--out-dir`
+    # as `<crate>-<hash>.d` and `lib<crate>-<hash>.rmeta`, beside the Rustc action's `.rlib` of the
+    # same name and hash; undeclared, so a sandbox dropped them, but run unsandboxed the rmeta
+    # stayed in the execution root, where a dependent's rustc searching `-L dependency` for the
+    # crate found it next to the rlib, stale or half-written while Clippy ran. rustc looks for
+    # `lib<crate>*.rmeta` in the `-L` directories themselves, not below them. Nothing reads these
+    # files: the metadata is emitted because clippy-driver lints during the analysis that produces
+    # it (with `--emit=dep-info` alone rustc stops before analysis); declared, the rmeta (a few per
+    # cent of the rlib's size) is an output remote execution uploads.
+    clippy_dep_info = ctx.actions.declare_file(ctx.label.name + ".clippy/lib.d", sibling = crate_info.output)
+    clippy_metadata = ctx.actions.declare_file(ctx.label.name + ".clippy/lib.rmeta", sibling = crate_info.output)
 
     args, env = construct_arguments(
         ctx = ctx,
@@ -186,10 +212,11 @@ def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, conf
         out_dir = out_dir,
         build_env_files = build_env_files,
         build_flags_files = build_flags_files,
-        emit = ["dep-info", "metadata"],
+        emit = [("dep-info", clippy_dep_info), ("metadata", clippy_metadata)],
         skip_expanding_rustc_env = True,
         use_json_output = bool(clippy_diagnostics_file),
         error_format = error_format,
+        use_persistent_worker = persistent_worker != None,
     )
 
     if crate_info.is_test:
@@ -199,7 +226,7 @@ def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, conf
     # specified on the library.
     clippy_flags += extra_clippy_flags
 
-    outputs = []
+    outputs = [clippy_dep_info, clippy_metadata]
 
     if output != None:
         args.process_wrapper_flags.add("--stderr-file", output)
@@ -232,17 +259,33 @@ def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, conf
     env["CLIPPY_CONF_DIR"] = "${{pwd}}/{}".format(config.dirname)
     compile_inputs = depset([config], transitive = [compile_inputs])
 
+    executable = process_wrapper
+    startup_arguments = []
+    tools = [clippy_executable]
+    execution_requirements = {"supports-path-mapping": ""} if args.supports_path_mapping else None
+    if persistent_worker:
+        # The whole environment, `CLIPPY_CONF_DIR` included, goes into the request; the action's
+        # own is the shell's, the key the pool of Clippy workers is shared under.
+        worker_run = persistent_worker_run(ctx, persistent_worker, [args], env)
+        env = dict(ctx.configuration.default_shell_env)
+        if ctx.var["COMPILATION_MODE"] != "opt":
+            args.process_wrapper_flags.add("--rustc-incremental", "true")
+        executable = worker_run.executable
+        startup_arguments = worker_run.startup_arguments
+        tools = tools + worker_run.tools
+        execution_requirements = worker_run.execution_requirements
+
     ctx.actions.run(
-        executable = process_wrapper,
+        executable = executable,
         inputs = compile_inputs,
         outputs = outputs + [x for x in [clippy_diagnostics_file] if x],
         env = env,
-        tools = [clippy_executable],
-        arguments = args.all,
+        tools = tools,
+        arguments = startup_arguments + args.all,
         mnemonic = "Clippy",
         progress_message = "Clippy %{label}",
         toolchain = "@rules_rust//rust:toolchain_type",
-        execution_requirements = {"supports-path-mapping": ""} if args.supports_path_mapping else None,
+        execution_requirements = execution_requirements,
     )
 
 def _clippy_aspect_impl(target, ctx):
@@ -297,6 +340,7 @@ def _clippy_aspect_impl(target, ctx):
         extra_clippy_flags = clippy_flags,
         error_format = error_format,
         clippy_diagnostics_file = clippy_diagnostics,
+        persistent_worker = persistent_worker_for(ctx),
     )
 
     clippy_checks = [file for file in [clippy_out, clippy_success_marker] if file != None]
@@ -346,6 +390,10 @@ rust_clippy_aspect = aspect(
             doc = "The desired `--error-format` flags for rustc",
             default = "//rust/settings:error_format",
         ),
+        "_experimental_persistent_worker": attr.label(
+            doc = "Value of the `experimental_persistent_worker` build setting: run clippy through the process wrapper's worker front end, with incremental state, for the main repository's crates",
+            default = Label("//rust/settings:experimental_persistent_worker"),
+        ),
         "_extra_rustc_flag": attr.label(
             default = Label("//rust/settings:extra_rustc_flag"),
         ),
@@ -360,6 +408,13 @@ rust_clippy_aspect = aspect(
             doc = "A process wrapper for running clippy on all platforms",
             default = Label("//util/process_wrapper"),
             executable = True,
+            cfg = "exec",
+        ),
+        "_process_wrapper_worker": attr.label(
+            doc = "The persistent-worker front end of `_process_wrapper`, used with `//rust/settings:experimental_persistent_worker`.",
+            default = Label("//util/process_wrapper/worker"),
+            executable = True,
+            allow_single_file = True,
             cfg = "exec",
         ),
     },
