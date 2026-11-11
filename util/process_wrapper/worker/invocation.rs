@@ -110,10 +110,13 @@ impl Invocation {
     }
 
     /// The process wrapper command for this invocation. With `incremental_base` (a worker's
-    /// `<output base>/rustc-incremental`) and `--rustc-incremental true`, rustc gets
-    /// `-Cincremental=<incremental_base>/<configuration>`: the configuration segment of its
-    /// `--out-dir` (`bazel-out/<configuration>/bin/...`), so that the same crate built in two
-    /// configurations (target and exec) does not keep invalidating one session.
+    /// `<output base>/rustc-incremental`) and `--rustc-incremental true`, the compiler gets
+    /// `-Cincremental=<incremental_base>/<configuration>/<driver>`: the configuration segment of
+    /// its `--out-dir` (`bazel-out/<configuration>/bin/...`), so that the same crate built in two
+    /// configurations (target and exec) does not keep invalidating one session, and the file name
+    /// of the driver it runs (`rustc`, `clippy-driver`), so that a crate's compile and its Clippy
+    /// pass, which share crate name and metadata and so would share a session directory, each
+    /// keep their own.
     pub(crate) fn command(&self, incremental_base: Option<&Path>) -> Result<Command, String> {
         let process_wrapper = self
             .process_wrapper
@@ -126,11 +129,25 @@ impl Invocation {
             if let Some(base) = incremental_base {
                 command.arg(format!(
                     "-Cincremental={}",
-                    base.join(self.configuration()).display()
+                    base.join(self.configuration())
+                        .join(self.driver())
+                        .display()
                 ));
             }
         }
         Ok(command)
+    }
+
+    /// The file name of the compiler driver after `--` (`rustc`, `clippy-driver`), or `driver`
+    /// when there is none.
+    fn driver(&self) -> &str {
+        self.arguments
+            .iter()
+            .skip_while(|arg| *arg != "--")
+            .nth(1)
+            .and_then(|path| Path::new(path).file_name())
+            .and_then(|name| name.to_str())
+            .unwrap_or("driver")
     }
 
     fn configuration(&self) -> &str {
@@ -370,7 +387,7 @@ mod tests {
                 "--crate-name=foo",
                 "--out-dir",
                 "bazel-out/k8-fastbuild-ST-1234/bin/tools/foo",
-                "-Cincremental=/base/k8-fastbuild-ST-1234",
+                "-Cincremental=/base/k8-fastbuild-ST-1234/rustc",
             ])
         );
         let env: Vec<_> = command
@@ -402,6 +419,32 @@ mod tests {
             .unwrap()
             .command(None)
             .is_err());
+    }
+
+    #[test]
+    fn clippy_keeps_its_incremental_state_apart_from_rustc_s() {
+        let command = |driver: &str| {
+            Invocation::parse(owned(&[
+                "--process-wrapper",
+                "pw",
+                "--rustc-incremental",
+                "true",
+                "--",
+                driver,
+                "--out-dir=bazel-out/k8-fastbuild/bin/x",
+            ]))
+            .unwrap()
+            .command(Some(Path::new("/base")))
+            .unwrap()
+        };
+        assert_eq!(
+            command_line(&command("external/toolchain/bin/rustc")).last().unwrap(),
+            "-Cincremental=/base/k8-fastbuild/rustc"
+        );
+        assert_eq!(
+            command_line(&command("external/toolchain/bin/clippy-driver")).last().unwrap(),
+            "-Cincremental=/base/k8-fastbuild/clippy-driver"
+        );
     }
 
     #[test]

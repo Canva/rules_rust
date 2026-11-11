@@ -26,7 +26,8 @@
 //! - Started by Bazel as a persistent worker (`--persistent_worker` appended), it serves
 //!   `WorkRequest`s from stdin, one per action, each as one process wrapper run (see `worker.rs`).
 //!   Bazel keeps the worker, and so the incremental state the worker has rustc keep under
-//!   `<output base>/rustc-incremental`, alive between builds.
+//!   `<output base>/rustc-incremental/<configuration>/<driver>` (rustc's and clippy-driver's
+//!   apart), alive between builds.
 //! - Run one-shot (the same action executed remotely, sandboxed or with `--strategy=Rustc=local`),
 //!   it replaces itself with the process wrapper. There is no state to keep, so
 //!   `--rustc-incremental` is inert.

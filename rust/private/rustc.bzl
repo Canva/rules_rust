@@ -1773,6 +1773,75 @@ def setup_zself_profile(ctx, crate_info):
 
     return profiling_dir, profiling_flags
 
+def persistent_worker_for(ctx):
+    """The persistent worker the Rust actions of a target run through, if any.
+
+    `//rust/settings:experimental_persistent_worker`, and only for the crates of the main
+    repository, the ones an edit-build loop recompiles: the worker layout is a different command
+    line, and a crate of an external repository must keep the one every other build of it has, so
+    that its remote cache entry (from CI, or from whoever built it before) still matches. The
+    process wrapper itself, an input of every one of those actions, is untouched by the worker.
+
+    Args:
+        ctx (ctx): The rule's or aspect's context object; needs the `_process_wrapper`,
+            `_process_wrapper_worker` and `_experimental_persistent_worker` attributes.
+
+    Returns:
+        struct, optional: `worker` (File, the front end `//util/process_wrapper/worker`) and
+            `process_wrapper` (File), or None when the actions run as they always did.
+    """
+    process_wrapper = getattr(ctx.executable, "_process_wrapper", None)
+    worker = getattr(ctx.executable, "_process_wrapper_worker", None)
+    if not process_wrapper or not worker:
+        return None
+    if not hasattr(ctx.attr, "_experimental_persistent_worker") or not ctx.attr._experimental_persistent_worker[BuildSettingInfo].value:
+        return None
+    if ctx.label.workspace_name != "":
+        return None
+    return struct(worker = worker, process_wrapper = process_wrapper)
+
+def persistent_worker_run(ctx, persistent_worker, args_list, env_from_args):
+    """What a `ctx.actions.run` of a worker action takes, given arguments laid out for the worker.
+
+    The environment is part of the key Bazel pools workers by. The per-crate variables go into
+    the request instead (`--env`, which the process wrapper applies to the compiler), so that
+    every crate of a configuration shares the workers started with the shell environment alone.
+
+    The worker front end runs the process wrapper on each request. Its path is the one startup
+    argument (every other argument is in a flag file, see `construct_arguments`): Bazel keys
+    worker pools by the startup command, which is the same for every crate of a configuration, so
+    they share one pool per mnemonic. Not path-mapped: the path must be the real one for the
+    worker, which runs in the execution root, and an action that does not leave the machine gains
+    nothing from path mapping.
+
+    Args:
+        ctx (ctx): The rule's or aspect's context object.
+        persistent_worker (struct): From `persistent_worker_for`.
+        args_list (list): The `construct_arguments` results of the actions, each built with
+            `use_persistent_worker = True`.
+        env_from_args (dict): The per-crate environment `construct_arguments` returned.
+
+    Returns:
+        struct: `executable`, `startup_arguments` (to put before an action's `args.all`), `tools`
+            and `execution_requirements` for `ctx.actions.run`.
+    """
+    for worker_args in args_list:
+        worker_args.process_wrapper_flags.add_all(
+            ["{}={}".format(k, v) for k, v in sorted(env_from_args.items())],
+            before_each = "--env",
+        )
+    worker_startup = ctx.actions.args()
+    worker_startup.add("--process-wrapper", persistent_worker.process_wrapper)
+    return struct(
+        executable = persistent_worker.worker,
+        startup_arguments = [worker_startup],
+        tools = [persistent_worker.process_wrapper],
+        execution_requirements = {
+            "requires-worker-protocol": "proto",
+            "supports-workers": "1",
+        },
+    )
+
 def rustc_compile_action(
         *,
         ctx,
@@ -1970,24 +2039,13 @@ def rustc_compile_action(
     else:
         link_std_dylib = toolchain._link_std_dylib
 
-    # Persistent workers (`--@rules_rust//rust/settings:experimental_persistent_worker`): the
-    # action runs the worker front end (`//util/process_wrapper/worker`) with the process wrapper
-    # as a tool, advertises `supports-workers` and lays its command line out for a worker (see
-    # `construct_arguments`). Only for the crates of the main repository, the ones an edit-build
-    # loop recompiles: the worker layout is a different command line, and a crate of an external
-    # repository must keep the one every other build of it has, so that its remote cache entry
-    # (from CI, or from whoever built it before) still matches. The process wrapper itself, an
-    # input of every one of those actions, is untouched by the worker. Incremental compilation
-    # inside the worker is for non-`opt` builds and not the single-object (`cc_common.link`)
-    # layout, which needs one codegen unit.
-    process_wrapper_worker = getattr(ctx.executable, "_process_wrapper_worker", None)
-    use_persistent_worker = (
-        bool(ctx.executable._process_wrapper) and
-        bool(process_wrapper_worker) and
-        hasattr(ctx.attr, "_experimental_persistent_worker") and
-        ctx.attr._experimental_persistent_worker[BuildSettingInfo].value and
-        ctx.label.workspace_name == ""
-    )
+    # Persistent workers (`--@rules_rust//rust/settings:experimental_persistent_worker`, see
+    # `persistent_worker_for`): the action runs the worker front end with the process wrapper as a
+    # tool, advertises `supports-workers` and lays its command line out for a worker (see
+    # `construct_arguments`). Incremental compilation inside the worker is for non-`opt` builds and
+    # not the single-object (`cc_common.link`) layout, which needs one codegen unit.
+    persistent_worker = persistent_worker_for(ctx)
+    use_persistent_worker = persistent_worker != None
     use_incremental = (
         use_persistent_worker and
         ctx.var["COMPILATION_MODE"] != "opt" and
@@ -2058,17 +2116,15 @@ def rustc_compile_action(
     env = dict(ctx.configuration.default_shell_env)
 
     # this is the final list of env vars
+    worker_run = None
     if use_persistent_worker:
-        # The environment is part of the key Bazel pools workers by. Keep the per-crate variables
-        # out of it: the process wrapper applies them to rustc from the request (`--env`), and
-        # every rustc action shares the workers started with the shell environment alone.
-        for worker_args in [args, args_metadata]:
-            if worker_args == None:
-                continue
-            worker_args.process_wrapper_flags.add_all(
-                ["{}={}".format(k, v) for k, v in sorted(env_from_args.items())],
-                before_each = "--env",
-            )
+        # The per-crate variables go into the request (`--env`), not the action's environment.
+        worker_run = persistent_worker_run(
+            ctx,
+            persistent_worker,
+            [worker_args for worker_args in [args, args_metadata] if worker_args != None],
+            env_from_args,
+        )
         if use_incremental:
             # The metadata action stops rustc at the rmeta, which leaves no session to reuse, so
             # only the full compile asks for it (the process wrapper ignores it in a one-shot run).
@@ -2129,22 +2185,11 @@ def rustc_compile_action(
         worker_tools = {}
         startup_arguments = []
         worker_requirements = {}
-        if use_persistent_worker:
-            # The worker front end runs the process wrapper on each request. Its path is the one
-            # startup argument (every other argument is in a flag file): Bazel keys worker pools
-            # by the startup command, which is the same for every crate of a configuration, so
-            # they share one pool per mnemonic. Not path-mapped: the path must be the real one
-            # for the worker, which runs in the execution root, and an action that does not
-            # leave the machine gains nothing from path mapping.
-            executable = process_wrapper_worker
-            worker_tools = {"tools": [ctx.executable._process_wrapper]}
-            worker_startup = ctx.actions.args()
-            worker_startup.add("--process-wrapper", ctx.executable._process_wrapper)
-            startup_arguments = [worker_startup]
-            worker_requirements = {
-                "requires-worker-protocol": "proto",
-                "supports-workers": "1",
-            }
+        if worker_run:
+            executable = worker_run.executable
+            worker_tools = {"tools": worker_run.tools}
+            startup_arguments = worker_run.startup_arguments
+            worker_requirements = worker_run.execution_requirements
 
         # Run as normal
         ctx.actions.run(
