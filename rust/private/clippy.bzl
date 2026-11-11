@@ -170,10 +170,30 @@ def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, conf
         lint_files,
     )
 
-    if clippy_diagnostics_file:
-        crate_info_dict = structs.to_dict(crate_info)
-        crate_info_dict["rustc_output"] = clippy_diagnostics_file
-        crate_info = rust_common.create_crate_info(**crate_info_dict)
+    # The process wrapper writes to `--output-file` whenever the crate has a `rustc_output`
+    # (`construct_arguments`). With `rustc_output_diagnostics` that is the Rustc action's
+    # `.rustc-output`, declared and written by that action: Clippy's run must not open it.
+    # Unsandboxed in the one execution root (a persistent worker, `--spawn_strategy=local`) it
+    # found the file read-only once the Rustc action was done ("Unable to open output_file:
+    # Permission denied"), or clobbered it with Clippy's output when it got there first; a sandbox
+    # only hid the stray write. Clippy's own diagnostics file, when there is one, takes the place.
+    crate_info_dict = structs.to_dict(crate_info)
+    crate_info_dict["rustc_output"] = clippy_diagnostics_file
+    crate_info_dict["rustc_rmeta_output"] = None
+    crate_info = rust_common.create_crate_info(**crate_info_dict)
+
+    # Clippy's compile outputs, declared and in a directory of their own. With
+    # `--emit=dep-info,metadata` under rustc's default names they went to the crate's `--out-dir`
+    # as `<crate>-<hash>.d` and `lib<crate>-<hash>.rmeta`, beside the Rustc action's `.rlib` of the
+    # same name and hash; undeclared, so a sandbox dropped them, but run unsandboxed the rmeta
+    # stayed in the execution root, where a dependent's rustc searching `-L dependency` for the
+    # crate found it next to the rlib, stale or half-written while Clippy ran. rustc looks for
+    # `lib<crate>*.rmeta` in the `-L` directories themselves, not below them. Nothing reads these
+    # files: the metadata is emitted because clippy-driver lints during the analysis that produces
+    # it (with `--emit=dep-info` alone rustc stops before analysis); declared, the rmeta (a few per
+    # cent of the rlib's size) is an output remote execution uploads.
+    clippy_dep_info = ctx.actions.declare_file(ctx.label.name + ".clippy/lib.d", sibling = crate_info.output)
+    clippy_metadata = ctx.actions.declare_file(ctx.label.name + ".clippy/lib.rmeta", sibling = crate_info.output)
 
     args, env = construct_arguments(
         ctx = ctx,
@@ -192,7 +212,7 @@ def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, conf
         out_dir = out_dir,
         build_env_files = build_env_files,
         build_flags_files = build_flags_files,
-        emit = ["dep-info", "metadata"],
+        emit = [("dep-info", clippy_dep_info), ("metadata", clippy_metadata)],
         skip_expanding_rustc_env = True,
         use_json_output = bool(clippy_diagnostics_file),
         error_format = error_format,
@@ -206,7 +226,7 @@ def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, conf
     # specified on the library.
     clippy_flags += extra_clippy_flags
 
-    outputs = []
+    outputs = [clippy_dep_info, clippy_metadata]
 
     if output != None:
         args.process_wrapper_flags.add("--stderr-file", output)
