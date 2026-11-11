@@ -2072,6 +2072,11 @@ def rustc_compile_action(
         if use_incremental:
             # The metadata action stops rustc at the rmeta, which leaves no session to reuse, so
             # only the full compile asks for it (the process wrapper ignores it in a one-shot run).
+            # The action carries no `no-remote-*` requirement: which of a worker and remote
+            # execution runs it is the strategy's choice (`--strategy=Rustc=dynamic` races a
+            # local worker against the remote cache, so a dependency that someone has built is a
+            # cache hit and an edited crate an incremental compile), and the worker layout runs
+            # one-shot remotely like any other action.
             args.process_wrapper_flags.add("--rustc-incremental", "true")
     else:
         env.update(env_from_args)
@@ -2140,14 +2145,6 @@ def rustc_compile_action(
                 "requires-worker-protocol": "proto",
                 "supports-workers": "1",
             }
-        incremental_requirements = {}
-        if use_incremental:
-            # An action compiled incrementally in a worker is never a useful remote cache entry,
-            # and the lookup alone (the input tree of a large crate) costs seconds per action. Nor
-            # is it one to execute remotely: `no-remote-exec` keeps the remote strategy from
-            # claiming it ahead of the worker when the strategy list is Bazel's default (remote
-            # first, then worker), so no `--strategy` is needed to get the worker.
-            incremental_requirements = {"no-remote-cache": "1", "no-remote-exec": "1"}
 
         # Run as normal
         ctx.actions.run(
@@ -2166,7 +2163,7 @@ def rustc_compile_action(
             ),
             toolchain = "@rules_rust//rust:toolchain_type",
             resource_set = get_rustc_resource_set(toolchain),
-            execution_requirements = ({"supports-path-mapping": ""} if args.supports_path_mapping and not use_persistent_worker else {}) | worker_requirements | incremental_requirements,
+            execution_requirements = ({"supports-path-mapping": ""} if args.supports_path_mapping and not use_persistent_worker else {}) | worker_requirements,
             **worker_tools
         )
         if args_metadata:

@@ -102,8 +102,10 @@ fn run() -> Result<u8> {
     let user = user_config::load(&launcher_dir);
 
     // Dedicated `--output_base` for the inner `bazel build` so its
-    // `--error_format=json` doesn't thrash the primary Bazel server's
-    // analysis cache. Precedence: CLI > user_config > sidecar `_rra`
+    // `rustc_output_diagnostics` setting doesn't thrash the primary Bazel
+    // server's analysis cache (a `--bazel` wrapper whose configuration already
+    // carries the setting can drop the flag and share the server).
+    // Precedence: CLI > user_config > sidecar `_rra`
     // > setup-populated `BazelInfo` cache > slow `bazel info` fallback
     // against the outer server.
     let output_base = match args.output_base.or(user.output_base) {
@@ -122,10 +124,15 @@ fn run() -> Result<u8> {
         // produces bare `--//rust/settings:...` and only works when
         // the outer bazel invocation is IN rules_rust.
         //
-        // `error_format=json` makes rustc emit machine-readable
-        // diagnostics; without it the `.rustc-output` files are
-        // pre-rendered ANSI strings that RA can't parse.
-        .arg("--@rules_rust//rust/settings:error_format=json")
+        // `rustc_output_diagnostics` has the process wrapper write
+        // rustc's JSON diagnostics (which it always asks rustc for when
+        // it writes this file, whatever `error_format` is) to a
+        // `.rustc-output` file next to each main-repository crate's
+        // output. The `rendered` field carries the ANSI rendering, the
+        // form rust-analyzer asks cargo for. No `error_format=json`: it
+        // would change the configuration (and so the analysis cache)
+        // against the terminal's, and the terminal's human output of a
+        // build with this setting is what a developer wants anyway.
         .arg("--@rules_rust//rust/settings:rustc_output_diagnostics=true")
         .arg(format!("--output_groups=+{}", bep::RUSTC_OUTPUT_GROUP))
         .arg("--keep_going")

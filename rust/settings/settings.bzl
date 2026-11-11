@@ -124,6 +124,9 @@ def experimental_persistent_worker():
     rustc's incremental compilation, whose state the worker keeps under
     `<output base>/rustc-incremental` between builds. The actions still run one-shot (remotely,
     sandboxed or with `--strategy=Rustc=local`) with the same inputs; only the worker keeps state.
+    They carry no `no-remote-*` requirement, so `--strategy=Rustc=dynamic` (local `worker`, remote
+    `remote`) can race the two: a crate someone has built is a remote cache hit, an edited one an
+    incremental compile in the worker.
     The process wrapper itself is unchanged, so the actions of external repositories' crates, and
     every action without this flag, keep the action keys (and remote cache entries) they have
     without it.
