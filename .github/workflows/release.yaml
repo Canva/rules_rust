@@ -27,7 +27,7 @@ jobs:
   validation:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Ensure release does not already exist
         if: startsWith(github.ref, 'refs/heads/main')
         run: |
@@ -78,7 +78,7 @@ jobs:
             env:
               TARGET: "x86_64-unknown-linux-musl"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install rust toolchains for host
         run: |
           # Detect the current version of rust
@@ -120,7 +120,7 @@ jobs:
             bazel ${BAZEL_STARTUP_FLAGS[@]} run //crate_universe/tools/cross_installer -- --target=${TARGET} --output="${OUTPUT_PATH}"
         env:
           TARGET: "${{ matrix.env.TARGET }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           # The artifact name MUST be the target triple — release_prep.sh
           # locates each binary at ${GITHUB_WORKSPACE}/<triple>/.
@@ -140,7 +140,7 @@ jobs:
     outputs:
       tag: ${{ steps.create_tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - name: Create and push tag
@@ -166,7 +166,7 @@ jobs:
       contents: write
       id-token: write
       attestations: write
-    uses: bazel-contrib/.github/.github/workflows/release_ruleset.yaml@v7.7.0
+    uses: bazel-contrib/.github/.github/workflows/release_ruleset.yaml@1d798ff015ed0696433e01e2c3ccbb2abefadad7 # v7.7.0
     with:
       # Tests already ran on the PR that bumped version.bzl. Override the
       # `bazel test //...` default — rules_rust's full suite can't fit on a

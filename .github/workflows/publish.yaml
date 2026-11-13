@@ -26,7 +26,7 @@ on:
         description: Override the ref to read .bcr templates from
 jobs:
   publish:
-    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.4.1
+    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@c316f1611511a40423572303f66c80bb30bfe2f8 # v1.4.1
     with:
       author_name: bazel-io
       author_email: 15028808+bazel-io@users.noreply.github.com
