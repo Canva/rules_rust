@@ -1776,11 +1776,20 @@ def setup_zself_profile(ctx, crate_info):
 def persistent_worker_for(ctx):
     """The persistent worker the Rust actions of a target run through, if any.
 
-    `//rust/settings:experimental_persistent_worker`, and only for the crates of the main
-    repository, the ones an edit-build loop recompiles: the worker layout is a different command
-    line, and a crate of an external repository must keep the one every other build of it has, so
-    that its remote cache entry (from CI, or from whoever built it before) still matches. The
-    process wrapper itself, an input of every one of those actions, is untouched by the worker.
+    `//rust/settings:experimental_persistent_worker`, for the crates of the main repository (the
+    ones an edit-build loop recompiles) in non-`opt` builds. The worker layout is a different
+    command line, so a crate of an external repository, and every `opt` build, keeps the one every
+    other build of it has and its remote cache entry (from CI, or from whoever built it before)
+    still matches. The process wrapper itself, an input of every one of those actions, is
+    untouched by the worker.
+
+    The layout asks for no incremental compilation by itself: the same action runs one-shot
+    (remotely, sandboxed, `--strategy=Rustc=local`) and as a worker request, and only a worker
+    started with `--rustc-incremental=true` (Bazel's `--worker_extra_flag=Rustc=...`, an execution
+    option for local workers that is in no action and no cache key) compiles incrementally. With
+    the setting on in every build of a repository, CI's included, the entries CI's one-shot
+    compiles leave in the remote cache are the ones a developer's worker-strategy build looks up,
+    and only the crates whose inputs changed compile, in the worker.
 
     Args:
         ctx (ctx): The rule's or aspect's context object; needs the `_process_wrapper`,
@@ -1797,6 +1806,8 @@ def persistent_worker_for(ctx):
     if not hasattr(ctx.attr, "_experimental_persistent_worker") or not ctx.attr._experimental_persistent_worker[BuildSettingInfo].value:
         return None
     if ctx.label.workspace_name != "":
+        return None
+    if ctx.var["COMPILATION_MODE"] == "opt":
         return None
     return struct(worker = worker, process_wrapper = process_wrapper)
 
@@ -2042,15 +2053,10 @@ def rustc_compile_action(
     # Persistent workers (`--@rules_rust//rust/settings:experimental_persistent_worker`, see
     # `persistent_worker_for`): the action runs the worker front end with the process wrapper as a
     # tool, advertises `supports-workers` and lays its command line out for a worker (see
-    # `construct_arguments`). Incremental compilation inside the worker is for non-`opt` builds and
-    # not the single-object (`cc_common.link`) layout, which needs one codegen unit.
-    persistent_worker = persistent_worker_for(ctx)
+    # `construct_arguments`). Not for the single-object (`cc_common.link`) layout, which needs one
+    # codegen unit and so cannot compile incrementally.
+    persistent_worker = persistent_worker_for(ctx) if output_o == None else None
     use_persistent_worker = persistent_worker != None
-    use_incremental = (
-        use_persistent_worker and
-        ctx.var["COMPILATION_MODE"] != "opt" and
-        output_o == None
-    )
 
     args, env_from_args = construct_arguments(
         ctx = ctx,
@@ -2119,21 +2125,18 @@ def rustc_compile_action(
     worker_run = None
     if use_persistent_worker:
         # The per-crate variables go into the request (`--env`), not the action's environment.
+        # Whether the worker compiles incrementally is its startup flag (`--rustc-incremental=true`,
+        # see `persistent_worker_for`), not the action's: the action is the same run one-shot
+        # (remotely, like any other; it carries no `no-remote-*` requirement) and as a worker
+        # request, and so is its remote cache entry. The metadata action stops rustc at the rmeta
+        # (`--rustc-quit-on-rmeta`), which leaves no session to reuse; the worker sees the flag
+        # and compiles it without state.
         worker_run = persistent_worker_run(
             ctx,
             persistent_worker,
             [worker_args for worker_args in [args, args_metadata] if worker_args != None],
             env_from_args,
         )
-        if use_incremental:
-            # The metadata action stops rustc at the rmeta, which leaves no session to reuse, so
-            # only the full compile asks for it (the process wrapper ignores it in a one-shot run).
-            # The action carries no `no-remote-*` requirement: which of a worker and remote
-            # execution runs it is the strategy's choice (`--strategy=Rustc=dynamic` races a
-            # local worker against the remote cache, so a dependency that someone has built is a
-            # cache hit and an edited crate an incremental compile), and the worker layout runs
-            # one-shot remotely like any other action.
-            args.process_wrapper_flags.add("--rustc-incremental", "true")
     else:
         env.update(env_from_args)
 

@@ -20,14 +20,18 @@
 //! argument) and the rest of their command line in flag files. Either way it is run, it runs the
 //! unchanged process wrapper (`//util/process_wrapper`) on the action's arguments, minus the flags
 //! it consumes itself (see `invocation.rs`): `--env KEY=VALUE`, the per-crate environment, goes
-//! into the process wrapper's environment, which it passes on to rustc; `--rustc-incremental true`
-//! asks for rustc's incremental compilation, which only a worker can offer.
+//! into the process wrapper's environment, which it passes on to rustc; `--rustc-incremental=true`
+//! asks for rustc's incremental compilation, which only a worker can offer. The actions never
+//! carry the latter: it is a startup argument Bazel adds to local workers only
+//! (`--worker_extra_flag=Rustc=--rustc-incremental=true`), so the same action, run one-shot in CI
+//! or by a remote executor's own persistent worker, asks for no state anywhere.
 //!
-//! - Started by Bazel as a persistent worker (`--persistent_worker` appended), it serves
+//! - Started by Bazel as a persistent worker (`--persistent_worker` among the arguments), it serves
 //!   `WorkRequest`s from stdin, one per action, each as one process wrapper run (see `worker.rs`).
-//!   Bazel keeps the worker, and so the incremental state the worker has rustc keep under
+//!   Started with `--rustc-incremental=true`, it has rustc keep incremental state under
 //!   `<output base>/rustc-incremental/<configuration>/<driver>` (rustc's and clippy-driver's
-//!   apart), alive between builds.
+//!   apart), which Bazel keeping the worker keeps alive between builds. Without the flag it is a
+//!   stateless front end: one fresh process wrapper and compiler per request.
 //! - Run one-shot (the same action executed remotely, sandboxed or with `--strategy=Rustc=local`),
 //!   it replaces itself with the process wrapper. There is no state to keep, so
 //!   `--rustc-incremental` is inert.
@@ -45,15 +49,13 @@ mod worker;
 
 use std::process::{exit, Command};
 
-use crate::invocation::{expand_flagfiles, Invocation};
+use crate::invocation::{expand_flagfiles, worker_startup_arguments, Invocation};
 
 fn main() {
     let argv: Vec<String> = std::env::args().skip(1).collect();
 
-    // Bazel appends `--persistent_worker` to the worker's startup command; what precedes it is
-    // the startup arguments, shared by every request.
-    if let Some(index) = argv.iter().position(|arg| arg == "--persistent_worker") {
-        let startup = expand_flagfiles(argv[..index].to_vec())
+    if let Some(startup_arguments) = worker_startup_arguments(&argv) {
+        let startup = expand_flagfiles(startup_arguments)
             .and_then(Invocation::parse)
             .unwrap_or_else(|error| fail(&error));
         if let Err(error) = worker::run(startup) {

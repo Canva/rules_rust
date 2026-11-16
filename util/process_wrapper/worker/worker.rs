@@ -20,9 +20,10 @@
 //! is one run of the process wrapper (see `invocation.rs`), so it behaves exactly like the same
 //! action run without a worker, and its exit code and output go back in a `WorkResponse`.
 //!
-//! What the worker adds is persistence: Bazel keeps the process alive between builds, so rustc's
-//! incremental compilation state can be kept under `<output base>/rustc-incremental` and reused
-//! by the next request for the same crate. The worker runs in the execution root, or in a
+//! What the worker adds is persistence: Bazel keeps the process alive between builds, so, started
+//! with `--rustc-incremental=true` (Bazel's `--worker_extra_flag`), it can have rustc keep its
+//! incremental compilation state under `<output base>/rustc-incremental` and reuse it on the next
+//! request for the same crate. The worker runs in the execution root, or in a
 //! sandboxed copy of it under `<output base>/bazel-workers/` (dynamic execution sandboxes its
 //! local workers); either way the output base is an ancestor of its working directory.
 //!

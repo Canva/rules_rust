@@ -127,9 +127,10 @@ def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, conf
         error_format (str): Which error format to use. Must be acceptable by rustc: https://doc.rust-lang.org/beta/rustc/command-line-arguments.html#--error-format-control-how-errors-are-produced
         clippy_diagnostics_file (File): File to output diagnostics to. If None, no diagnostics will be written
         persistent_worker (struct): From `rustc.bzl`'s `persistent_worker_for`: run clippy through the
-            process wrapper's persistent-worker front end, with incremental compilation state of its own
-            (`<output base>/rustc-incremental/<configuration>/clippy-driver`) in non-`opt` builds, like
-            the crate's `Rustc` action. None runs it one-shot as always.
+            process wrapper's persistent-worker front end, like the crate's `Rustc` action; a worker
+            started with `--rustc-incremental=true` keeps incremental compilation state of its own
+            (`<output base>/rustc-incremental/<configuration>/clippy-driver`). None runs it one-shot as
+            always.
 
     Returns:
         None
@@ -268,8 +269,6 @@ def rust_clippy_action(ctx, clippy_executable, process_wrapper, crate_info, conf
         # own is the shell's, the key the pool of Clippy workers is shared under.
         worker_run = persistent_worker_run(ctx, persistent_worker, [args], env)
         env = dict(ctx.configuration.default_shell_env)
-        if ctx.var["COMPILATION_MODE"] != "opt":
-            args.process_wrapper_flags.add("--rustc-incremental", "true")
         executable = worker_run.executable
         startup_arguments = worker_run.startup_arguments
         tools = tools + worker_run.tools

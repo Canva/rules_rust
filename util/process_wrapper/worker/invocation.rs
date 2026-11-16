@@ -30,10 +30,15 @@ pub(crate) struct Invocation {
     /// the key Bazel pools workers by, so that every crate shares one pool. It becomes the process
     /// wrapper's environment, which the wrapper passes on to rustc.
     pub(crate) env: Vec<(String, String)>,
-    /// `--rustc-incremental true`: compile with rustc's incremental compilation when a worker,
-    /// which has state to keep, runs this. Off when the request also stops rustc at the rmeta
-    /// (`--rustc-quit-on-rmeta true`): an interrupted session leaves nothing to reuse.
+    /// `--rustc-incremental=true`: compile with rustc's incremental compilation when a worker,
+    /// which has state to keep, runs this. A startup argument (Bazel's
+    /// `--worker_extra_flag=Rustc=--rustc-incremental=true`, for local workers only), so that the
+    /// actions, which run one-shot and remotely too, never ask for state. Off for a request that
+    /// stops rustc at the rmeta (`--rustc-quit-on-rmeta true`): an interrupted session leaves
+    /// nothing to reuse.
     pub(crate) rustc_incremental: bool,
+    /// `--rustc-quit-on-rmeta true` was among the arguments (a metadata-only compile).
+    pub(crate) quits_on_rmeta: bool,
     /// Everything else, in order: the process wrapper's flags, `--`, rustc and its arguments.
     pub(crate) arguments: Vec<String>,
 }
@@ -44,7 +49,6 @@ impl Invocation {
     /// and everything from `--` on, passes through.
     pub(crate) fn parse(argv: Vec<String>) -> Result<Self, String> {
         let mut invocation = Self::default();
-        let mut quit_on_rmeta = false;
         let mut args = argv.into_iter();
         while let Some(arg) = args.next() {
             if arg == "--" {
@@ -79,7 +83,7 @@ impl Invocation {
                 "--rustc-quit-on-rmeta" => {
                     // The process wrapper's flag; only noted here.
                     let value = value()?;
-                    quit_on_rmeta = value == "true";
+                    invocation.quits_on_rmeta = value == "true";
                     if separate {
                         invocation.arguments.push(flag);
                         invocation.arguments.push(value);
@@ -90,21 +94,25 @@ impl Invocation {
                 _ => invocation.arguments.push(arg),
             }
         }
-        if quit_on_rmeta {
+        if invocation.quits_on_rmeta {
             invocation.rustc_incremental = false;
         }
         Ok(invocation)
     }
 
     /// A request as the worker runs it: the startup arguments first (the process wrapper and
-    /// whatever else Bazel started the worker with), then the request's.
+    /// whatever else Bazel started the worker with, `--rustc-incremental=true` among them), then
+    /// the request's. A metadata-only request compiles without incremental state whatever the
+    /// startup arguments say.
     pub(crate) fn with_startup(startup: &Invocation, request: Invocation) -> Invocation {
         Invocation {
             process_wrapper: request
                 .process_wrapper
                 .or_else(|| startup.process_wrapper.clone()),
             env: [startup.env.clone(), request.env].concat(),
-            rustc_incremental: request.rustc_incremental,
+            rustc_incremental: (startup.rustc_incremental || request.rustc_incremental)
+                && !request.quits_on_rmeta,
+            quits_on_rmeta: request.quits_on_rmeta,
             arguments: [startup.arguments.clone(), request.arguments].concat(),
         }
     }
@@ -186,6 +194,21 @@ pub(crate) fn incremental_base(current_dir: &Path) -> Option<PathBuf> {
         .skip(1)
         .find(|dir| dir.join("execroot").is_dir())
         .map(|output_base| output_base.join(INCREMENTAL_DIR_NAME))
+}
+
+/// The startup arguments of a worker Bazel started, or None for a one-shot run. Bazel starts a
+/// worker with the action's startup arguments, then `--persistent_worker`, then the
+/// `--worker_extra_flag` values for the mnemonic (`--rustc-incremental=true` comes this way), so
+/// the startup arguments are everything but `--persistent_worker`.
+pub(crate) fn worker_startup_arguments(argv: &[String]) -> Option<Vec<String>> {
+    let index = argv.iter().position(|arg| arg == "--persistent_worker")?;
+    Some(
+        argv[..index]
+            .iter()
+            .chain(&argv[index + 1..])
+            .cloned()
+            .collect(),
+    )
 }
 
 /// Replaces every `--flagfile=<path>` argument before `--` with the lines of that file (empty
@@ -270,6 +293,7 @@ mod tests {
                     ("CARGO_PKG_VERSION".to_owned(), "1.2.3".to_owned()),
                 ],
                 rustc_incremental: true,
+                quits_on_rmeta: false,
                 arguments: owned(&[
                     "--subst",
                     "pwd=${pwd}",
@@ -314,6 +338,7 @@ mod tests {
         ]))
         .unwrap();
         assert!(!invocation.rustc_incremental);
+        assert!(invocation.quits_on_rmeta);
         // The process wrapper's flag still reaches it, as given.
         assert_eq!(
             invocation.arguments,
@@ -359,6 +384,62 @@ mod tests {
         );
         assert!(merged.rustc_incremental);
         assert_eq!(merged.arguments, owned(&["--", "rustc"]));
+    }
+
+    #[test]
+    fn worker_extra_flags_after_persistent_worker_are_startup_arguments() {
+        // `bazel ... --worker_extra_flag=Rustc=--rustc-incremental=true` starts the worker as
+        // `worker --process-wrapper pw --persistent_worker --rustc-incremental=true`.
+        let argv = owned(&[
+            "--process-wrapper",
+            "pw",
+            "--persistent_worker",
+            "--rustc-incremental=true",
+        ]);
+        assert_eq!(
+            worker_startup_arguments(&argv),
+            Some(owned(&["--process-wrapper", "pw", "--rustc-incremental=true"]))
+        );
+        let startup = Invocation::parse(worker_startup_arguments(&argv).unwrap()).unwrap();
+        assert!(startup.rustc_incremental);
+        assert_eq!(startup.process_wrapper.as_deref(), Some("pw"));
+
+        // One-shot: no `--persistent_worker`.
+        assert_eq!(
+            worker_startup_arguments(&owned(&["--process-wrapper", "pw", "--", "rustc"])),
+            None
+        );
+    }
+
+    #[test]
+    fn the_startup_flag_turns_incremental_on_for_every_request_but_a_metadata_one() {
+        // `--worker_extra_flag=Rustc=--rustc-incremental=true` reaches the worker as one argument.
+        let startup = Invocation::parse(owned(&[
+            "--process-wrapper",
+            "pw",
+            "--rustc-incremental=true",
+        ]))
+        .unwrap();
+        assert!(startup.rustc_incremental);
+
+        // The actions carry no flag of their own.
+        let request = Invocation::parse(owned(&["--", "rustc"])).unwrap();
+        assert!(!request.rustc_incremental);
+        assert!(Invocation::with_startup(&startup, request).rustc_incremental);
+
+        let metadata = Invocation::parse(owned(&[
+            "--rustc-quit-on-rmeta",
+            "true",
+            "--",
+            "rustc",
+        ]))
+        .unwrap();
+        assert!(!Invocation::with_startup(&startup, metadata).rustc_incremental);
+
+        // A worker started without the flag is a stateless front end.
+        let plain = Invocation::parse(owned(&["--process-wrapper", "pw"])).unwrap();
+        let request = Invocation::parse(owned(&["--", "rustc"])).unwrap();
+        assert!(!Invocation::with_startup(&plain, request).rustc_incremental);
     }
 
     #[test]
