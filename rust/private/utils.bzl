@@ -989,6 +989,11 @@ def generate_output_diagnostics(ctx, sibling, require_process_wrapper = True):
     if not provider.rustc_output_diagnostics:
         return None
 
+    # Only for the crates of the main repository, the ones being edited: an external repository's
+    # crate keeps the action every other build of it has (see `rustc_compile_action`).
+    if ctx.label.workspace_name != "":
+        return None
+
     return ctx.actions.declare_file(
         sibling.basename + ".rustc-output",
         sibling = sibling,

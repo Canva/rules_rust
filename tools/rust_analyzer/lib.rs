@@ -298,17 +298,31 @@ fn write_toolchain_info_sidecar(
 
 /// Map each spec's `root_module` to its label. Multi-file siblings
 /// fall back to `bazel query`.
+///
+/// A root module shared by a test and a non-test crate (`rust_test(crate =
+/// ":bin")`, or `rust_test` on a library's `lib.rs`) maps to the non-test
+/// one: building the test target compiles the crate twice (the crate and
+/// its test harness) for the same diagnostics, and `#[cfg(test)]` code is
+/// what rust-analyzer's own check leaves out too.
 fn build_file_label_map(
     crate_specs: &std::collections::BTreeSet<CrateSpec>,
 ) -> BTreeMap<Utf8PathBuf, String> {
-    let mut out = BTreeMap::new();
+    let mut out: BTreeMap<Utf8PathBuf, (String, bool)> = BTreeMap::new();
     for spec in crate_specs {
         let Some(build) = spec.build.as_ref() else {
             continue;
         };
-        out.insert(Utf8PathBuf::from(&spec.root_module), build.label.clone());
+        let root = Utf8PathBuf::from(&spec.root_module);
+        match out.get(&root) {
+            Some((_, existing_is_test)) if spec.is_test || !existing_is_test => continue,
+            _ => {
+                out.insert(root, (build.label.clone(), spec.is_test));
+            }
+        }
     }
-    out
+    out.into_iter()
+        .map(|(root, (label, _))| (root, label))
+        .collect()
 }
 
 fn report_diagnostics(workspace: &Utf8Path, crate_specs: &std::collections::BTreeSet<CrateSpec>) {

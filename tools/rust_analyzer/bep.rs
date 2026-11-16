@@ -56,12 +56,38 @@ struct EventId {
 }
 
 #[derive(Debug, Deserialize)]
-struct ActionCompletedId {}
+#[serde(rename_all = "camelCase")]
+struct ActionCompletedId {
+    /// The action's primary output, relative to the execution root. The
+    /// `action` payload of a failed action carries no `primaryOutput`
+    /// file of its own (Bazel 9), only this.
+    #[serde(default)]
+    primary_output: Option<String>,
+}
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ActionPayload {
     #[serde(default)]
+    success: bool,
+    #[serde(default)]
     stderr: Option<BepFile>,
+    #[serde(default)]
+    primary_output: Option<BepFile>,
+}
+
+/// An action that failed, as its `action` event in the BEP reports it. Bazel
+/// publishes that event for failed actions (and for every action with
+/// `--build_event_publish_all_actions`; the successful ones are skipped here).
+#[derive(Debug, Default, PartialEq)]
+pub struct FailedAction {
+    /// The action's primary output: for a Rustc action the crate's output,
+    /// next to which `generate_output_diagnostics` declares the
+    /// `.rustc-output` file. Absolute, or relative to the execution root
+    /// when BEP reports it that way.
+    pub primary_output: Option<Utf8PathBuf>,
+    /// The file Bazel captured the action's stderr in.
+    pub stderr: Option<Utf8PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -196,11 +222,11 @@ pub fn parse_spec_paths(
     parse_output_group_paths(bep_path, SPEC_OUTPUT_GROUP, execution_root)
 }
 
-/// Return the stderr file path captured for every completed Bazel action
-/// in the BEP, regardless of label. With `error_format=json` set on the
-/// build, those files contain rustc's machine-readable diagnostics — the
-/// only place to read them when the action fails (failed actions don't
-/// produce their declared `.rustc-output` artifacts).
+/// Every action that failed in the BEP, regardless of label: a failed
+/// target has no output group in its `completed` event, so a failed Rustc
+/// action's `.rustc-output` file is found through its `action` event
+/// instead (next to the primary output), and its stderr is where the
+/// diagnostics are when the build sets `error_format=json`.
 ///
 /// We deliberately do NOT filter by the saved-file's target label.
 /// That matches `cargo check`'s behavior: when a dep of the edited
@@ -209,11 +235,11 @@ pub fn parse_spec_paths(
 /// saved-file's label silently drops every upstream failure, which
 /// surfaces in the editor as "no diagnostics anywhere" — the user has
 /// no idea why their save produced nothing.
-pub fn parse_action_stderr_paths(bep_path: &Utf8Path) -> Result<Vec<Utf8PathBuf>> {
+pub fn parse_failed_actions(bep_path: &Utf8Path) -> Result<Vec<FailedAction>> {
     let file = File::open(bep_path).with_context(|| format!("opening BEP file {bep_path}"))?;
     let reader = BufReader::new(file);
 
-    let mut paths: Vec<Utf8PathBuf> = Vec::new();
+    let mut actions = Vec::new();
     for line in reader.lines() {
         let line = line.with_context(|| format!("reading BEP file {bep_path}"))?;
         if line.is_empty() {
@@ -223,27 +249,23 @@ pub fn parse_action_stderr_paths(bep_path: &Utf8Path) -> Result<Vec<Utf8PathBuf>
             Ok(e) => e,
             Err(_) => continue,
         };
-        if event
-            .id
-            .as_ref()
-            .and_then(|i| i.action_completed.as_ref())
-            .is_none()
-        {
+        let Some(id) = event.id.as_ref().and_then(|i| i.action_completed.as_ref()) else {
             continue;
-        }
-        let action = match event.action {
-            Some(a) => a,
-            None => continue,
         };
-        if let Some(stderr) = action.stderr {
-            if let Some(path) = file_to_path(&stderr) {
-                paths.push(path);
-            }
-        }
+        let action = match event.action {
+            Some(a) if !a.success => a,
+            _ => continue,
+        };
+        actions.push(FailedAction {
+            primary_output: action
+                .primary_output
+                .as_ref()
+                .and_then(file_to_path)
+                .or_else(|| id.primary_output.as_deref().map(Utf8PathBuf::from)),
+            stderr: action.stderr.as_ref().and_then(file_to_path),
+        });
     }
-    paths.sort();
-    paths.dedup();
-    Ok(paths)
+    Ok(actions)
 }
 
 fn file_to_path(file: &BepFile) -> Option<Utf8PathBuf> {
@@ -415,6 +437,44 @@ mod tests {
         )
         .unwrap();
         assert_eq!(specs, vec![Utf8PathBuf::from("/abs/lib.spec.json")]);
+    }
+
+    #[test]
+    fn parse_failed_actions_reads_primary_output_and_stderr() {
+        let dir = tempdir();
+        let bep_path = dir.join("bep.json");
+        // A failed Rustc action as Bazel 9 reports it (the primary output in
+        // the id only), one with a `primaryOutput` file in the payload, a
+        // successful action (published with --build_event_publish_all_actions)
+        // and the failed target's completion.
+        std::fs::write(
+            &bep_path,
+            r#"{"id":{"actionCompleted":{"primaryOutput":"bazel-out/k8-fastbuild/bin/pkg/libfoo.rlib","label":"//pkg:foo","configuration":{"id":"abc"}}},"action":{"exitCode":1,"stderr":{"name":"stderr","uri":"file:///ob/execroot/_main/bazel-out/_tmp/actions/stderr-3"},"label":"//pkg:foo","type":"Rustc","commandLine":["worker"]}}
+{"id":{"actionCompleted":{"primaryOutput":"bazel-out/k8-fastbuild/bin/pkg/libbar.rlib","label":"//pkg:bar"}},"action":{"exitCode":1,"label":"//pkg:bar","primaryOutput":{"name":"bazel-out/k8-fastbuild/bin/pkg/libbar.rlib","uri":"file:///ob/execroot/_main/bazel-out/k8-fastbuild/bin/pkg/libbar.rlib"},"type":"Rustc"}}
+{"id":{"actionCompleted":{"primaryOutput":"bazel-out/k8-fastbuild/bin/pkg/ok.txt","label":"//pkg:ok"}},"action":{"success":true,"label":"//pkg:ok","type":"Genrule"}}
+{"id":{"targetCompleted":{"label":"//pkg:foo"}},"completed":{"failureDetail":{"message":"worker spawn failed for Rustc"}}}
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            parse_failed_actions(&bep_path).unwrap(),
+            vec![
+                FailedAction {
+                    primary_output: Some(Utf8PathBuf::from(
+                        "bazel-out/k8-fastbuild/bin/pkg/libfoo.rlib"
+                    )),
+                    stderr: Some(Utf8PathBuf::from(
+                        "/ob/execroot/_main/bazel-out/_tmp/actions/stderr-3"
+                    )),
+                },
+                FailedAction {
+                    primary_output: Some(Utf8PathBuf::from(
+                        "/ob/execroot/_main/bazel-out/k8-fastbuild/bin/pkg/libbar.rlib"
+                    )),
+                    stderr: None,
+                },
+            ]
+        );
     }
 
     fn tempdir() -> Utf8PathBuf {

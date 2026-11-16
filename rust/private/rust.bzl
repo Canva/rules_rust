@@ -696,6 +696,9 @@ RUSTC_ATTRS = {
     "_error_format": attr.label(
         default = Label("//rust/settings:error_format"),
     ),
+    "_experimental_persistent_worker": attr.label(
+        default = Label("//rust/settings:experimental_persistent_worker"),
+    ),
     "_extra_exec_rustc_env": attr.label(
         default = Label("//rust/settings:extra_exec_rustc_env"),
     ),
@@ -720,6 +723,13 @@ RUSTC_ATTRS = {
     "_process_wrapper": attr.label(
         doc = "A process wrapper for running rustc on all platforms.",
         default = Label("//util/process_wrapper"),
+        executable = True,
+        allow_single_file = True,
+        cfg = "exec",
+    ),
+    "_process_wrapper_worker": attr.label(
+        doc = "The persistent-worker front end of `_process_wrapper`, used with `//rust/settings:experimental_persistent_worker`.",
+        default = Label("//util/process_wrapper/worker"),
         executable = True,
         allow_single_file = True,
         cfg = "exec",
@@ -1442,6 +1452,12 @@ def _common_attrs_for_binary_without_process_wrapper(attrs):
 
     # use a fake process wrapper
     new_attr["_process_wrapper"] = attr.label(
+        default = None,
+        executable = True,
+        allow_single_file = True,
+        cfg = "exec",
+    )
+    new_attr["_process_wrapper_worker"] = attr.label(
         default = None,
         executable = True,
         allow_single_file = True,

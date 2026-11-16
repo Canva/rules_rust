@@ -6,9 +6,10 @@
 //!   1. Invoke `bazel build <label>` with rustc diagnostics turned on and
 //!      `--build_event_json_file=<tmp>` so BEP can tell us where rustc
 //!      wrote its JSON output.
-//!   2. Parse BEP for the `rustc_output` output group, collecting every
-//!      `.rustc-output` artifact produced by the build (one per rust
-//!      action — bin, lib, test compilations are all separate).
+//!   2. Collect the `.rustc-output` files of the build from the BEP: the
+//!      `rustc_output` output group of the targets that built, and the
+//!      file next to the primary output of each action that failed (see
+//!      [`rustc_output_files`]).
 //!   3. Concatenate the JSON contents to stdout for rust-analyzer to
 //!      render as inline diagnostics.
 //!
@@ -102,8 +103,10 @@ fn run() -> Result<u8> {
     let user = user_config::load(&launcher_dir);
 
     // Dedicated `--output_base` for the inner `bazel build` so its
-    // `--error_format=json` doesn't thrash the primary Bazel server's
-    // analysis cache. Precedence: CLI > user_config > sidecar `_rra`
+    // `rustc_output_diagnostics` setting doesn't thrash the primary Bazel
+    // server's analysis cache (a `--bazel` wrapper whose configuration already
+    // carries the setting can drop the flag and share the server).
+    // Precedence: CLI > user_config > sidecar `_rra`
     // > setup-populated `BazelInfo` cache > slow `bazel info` fallback
     // against the outer server.
     let output_base = match args.output_base.or(user.output_base) {
@@ -122,12 +125,32 @@ fn run() -> Result<u8> {
         // produces bare `--//rust/settings:...` and only works when
         // the outer bazel invocation is IN rules_rust.
         //
-        // `error_format=json` makes rustc emit machine-readable
-        // diagnostics; without it the `.rustc-output` files are
-        // pre-rendered ANSI strings that RA can't parse.
-        .arg("--@rules_rust//rust/settings:error_format=json")
+        // `rustc_output_diagnostics` has the process wrapper write
+        // rustc's JSON diagnostics (which it always asks rustc for when
+        // it writes this file, whatever `error_format` is) to a
+        // `.rustc-output` file next to each main-repository crate's
+        // output. The `rendered` field carries the ANSI rendering, the
+        // form rust-analyzer asks cargo for. No `error_format=json`: it
+        // would change the configuration (and so the analysis cache)
+        // against the terminal's, and the terminal's human output of a
+        // build with this setting is what a developer wants anyway.
         .arg("--@rules_rust//rust/settings:rustc_output_diagnostics=true")
         .arg(format!("--output_groups=+{}", bep::RUSTC_OUTPUT_GROUP))
+        // A repository may build the `clippy_checks` output group by
+        // default (`--output_groups=+clippy_checks` in its .bazelrc): a
+        // Clippy action per crate that fails the build on a lint, with
+        // nothing for the editor to show (a rendered message in the
+        // action's stderr). Not on a save: rustc's diagnostics are what
+        // it reports, and the opt-in below shows Clippy's inline, capped
+        // at warnings. An output group is no part of the configuration,
+        // so this costs the server no analysis.
+        .arg("--output_groups=-clippy_checks")
+        // The diagnostics files have to be on disk to be read. Under
+        // `--remote_download_toplevel` (or `minimal`) a compile that is a
+        // remote cache hit leaves its `.rustc-output` in the cache; this
+        // downloads them whatever the mode, and the clippy opt-in's
+        // `.clippy.diagnostics` with them.
+        .arg(r"--remote_download_regex=.*\.(rustc-output|clippy\.diagnostics)$")
         .arg("--keep_going")
         .arg(format!("--build_event_json_file={bep_path}"));
     if user.clippy {
@@ -149,29 +172,46 @@ fn run() -> Result<u8> {
         .status()
         .with_context(|| format!("invoking {}", args.bazel))?;
 
-    let mut diagnostic_files = match bep::parse_action_stderr_paths(&bep_path) {
-        Ok(paths) => paths,
+    // BEP reports output group files relative to flycheck's OWN Bazel exec
+    // root (rules_rust#4130). Setup pre-populates the `bazel info` cache,
+    // so steady-state saves incur zero extra bazel calls; only a
+    // stale/missing cache pays the `bazel info` cost.
+    let execution_root =
+        match cached_execution_root(&launcher_dir, &args.bazel, &workspace, &output_base) {
+            Ok(er) => Some(er),
+            Err(e) => {
+                eprintln!("flycheck: no execution root to resolve the BEP's relative paths: {e:#}");
+                None
+            }
+        };
+    let output_group_paths = |group: &str| match &execution_root {
+        Some(er) => match bep::parse_output_group_paths(&bep_path, group, er) {
+            Ok(paths) => paths,
+            Err(e) => {
+                eprintln!("flycheck: parsing the {group} output group failed: {e:#}");
+                Vec::new()
+            }
+        },
+        None => Vec::new(),
+    };
+    let failed_actions = match bep::parse_failed_actions(&bep_path) {
+        Ok(actions) => actions,
         Err(e) => {
             eprintln!("flycheck: parsing BEP failed: {e:#}");
             Vec::new()
         }
     };
+    let mut diagnostic_files = rustc_output_files(
+        output_group_paths(bep::RUSTC_OUTPUT_GROUP),
+        failed_actions,
+        execution_root.as_deref(),
+        |path| path.is_file(),
+    );
     if user.clippy {
         // Additive: clippy's JSON goes to the declared
         // `.clippy.diagnostics` file (exposed via `clippy_output`),
         // not stderr, when `clippy_output_diagnostics=true`.
-        //
-        // `parse_output_group_paths` needs flycheck's OWN Bazel exec
-        // root to resolve BEP-relative paths (rules_rust#4130). Setup
-        // pre-populates the cache, so steady-state saves incur zero
-        // extra bazel calls; only a stale/missing cache pays the
-        // `bazel info` cost.
-        match cached_execution_root(&launcher_dir, &args.bazel, &workspace, &output_base)
-            .and_then(|er| bep::parse_output_group_paths(&bep_path, bep::CLIPPY_OUTPUT_GROUP, &er))
-        {
-            Ok(paths) => diagnostic_files.extend(paths),
-            Err(e) => eprintln!("flycheck: parsing clippy_output group failed: {e:#}"),
-        }
+        diagnostic_files.extend(output_group_paths(bep::CLIPPY_OUTPUT_GROUP));
     }
 
     let sysroot_src = sidecar.as_ref().map(|s| s.sysroot_src.as_path());
@@ -180,6 +220,59 @@ fn run() -> Result<u8> {
     // Forward Bazel's exit code so RA can distinguish "build with
     // diagnostics" from "build tool broke".
     Ok(status.code().unwrap_or(1) as u8)
+}
+
+/// The files rustc's JSON diagnostics are in. With `rustc_output_diagnostics`
+/// on, the process wrapper streams rustc's raw JSON lines into a crate's
+/// `.rustc-output` file (and renders them for stderr), whatever
+/// `error_format` is:
+///
+/// - of the targets that built: the files of the `rustc_output` output
+///   group, as BEP lists them (`output_group`);
+/// - of the actions that failed: BEP lists no output group for a failed
+///   target, but publishes an `action` event for the failure, and the
+///   file is next to the action's primary output, where
+///   `generate_output_diagnostics` declares it (`<primary output>.rustc-output`),
+///   written before rustc exited and kept by Bazel like the rest of a
+///   failed action's outputs (copied out of a worker's sandbox,
+///   downloaded from remote execution). A failed action without one (a
+///   Clippy action, a crate without the setting) contributes its stderr
+///   instead, which is JSON when the build sets `error_format=json`.
+///
+/// `execution_root` resolves the relative paths BEP reports (without it
+/// they are skipped); `exists` says whether a candidate file is there.
+fn rustc_output_files(
+    output_group: Vec<Utf8PathBuf>,
+    failed: Vec<bep::FailedAction>,
+    execution_root: Option<&Utf8Path>,
+    exists: impl Fn(&Utf8Path) -> bool,
+) -> Vec<Utf8PathBuf> {
+    fn absolute(path: Utf8PathBuf, execution_root: Option<&Utf8Path>) -> Option<Utf8PathBuf> {
+        if path.is_absolute() {
+            Some(path)
+        } else {
+            execution_root.map(|root| root.join(path))
+        }
+    }
+    let mut files = output_group;
+    for action in failed {
+        let rustc_output = action
+            .primary_output
+            .and_then(|path| absolute(path, execution_root))
+            .map(|primary| Utf8PathBuf::from(format!("{primary}.rustc-output")))
+            .filter(|path| exists(path));
+        let stderr = || {
+            action
+                .stderr
+                .and_then(|path| absolute(path, execution_root))
+        };
+        if let Some(path) = rustc_output.or_else(stderr) {
+            files.push(path);
+        }
+    }
+    files.sort();
+    files.dedup();
+    files
 }
 
 /// Read the sidecar written by discover. Missing / malformed → `None`;
@@ -475,8 +568,9 @@ fn query_string_for(workspace: &Utf8Path, saved_file: &Utf8Path) -> Result<Strin
 }
 
 /// `bazel query 'attr(srcs, "<file>", //<package>:*)'` scoped to the
-/// nearest `BUILD.bazel`. Returns the first match — if a file belongs
-/// to several targets, any is correct.
+/// nearest `BUILD.bazel`, with `--output=label_kind` so that a file
+/// owned by several targets resolves to a non-test one when there is
+/// one (see [`pick_label`]).
 fn query_label_for(
     bazel: &Utf8Path,
     workspace: &Utf8Path,
@@ -486,7 +580,7 @@ fn query_label_for(
     let output = Command::new(bazel.as_str())
         .current_dir(workspace)
         .arg("query")
-        .arg("--output=label")
+        .arg("--output=label_kind")
         .arg(&query)
         .output()
         .with_context(|| format!("invoking {bazel} query {query}"))?;
@@ -494,12 +588,31 @@ fn query_label_for(
         let stderr = String::from_utf8_lossy(&output.stderr);
         anyhow::bail!("bazel query failed for {query}: {stderr}");
     }
-    String::from_utf8(output.stdout)
-        .context("bazel query output not UTF-8")?
-        .lines()
-        .find(|l| !l.is_empty())
-        .map(str::to_owned)
+    pick_label(&String::from_utf8(output.stdout).context("bazel query output not UTF-8")?)
         .with_context(|| format!("bazel query {query:?} returned no targets"))
+}
+
+/// Picks the target to build for diagnostics from `--output=label_kind`
+/// lines (`<kind> rule <label>`): the first whose kind is not a test rule,
+/// else the first of all. A `rust_test(crate = ":bin")` or a `rust_test`
+/// over a library's sources owns the same files as the crate it tests, and
+/// building it compiles the crate twice (the crate, then the test harness)
+/// for diagnostics the non-test build already produces.
+fn pick_label(label_kind_output: &str) -> Option<String> {
+    let mut first = None;
+    for line in label_kind_output.lines().filter(|l| !l.trim().is_empty()) {
+        let mut parts = line.split_whitespace();
+        let (Some(kind), Some(label)) = (parts.next(), parts.last()) else {
+            continue;
+        };
+        if first.is_none() {
+            first = Some(label.to_owned());
+        }
+        if !kind.ends_with("_test") {
+            return Some(label.to_owned());
+        }
+    }
+    first
 }
 
 /// Walk up looking for `BUILD.bazel` or `BUILD`. Returns the
@@ -571,6 +684,75 @@ mod tests {
             query_string_for(&workspace, &workspace.join(&rust_src_path)).unwrap(),
             r#"attr(srcs, "//example/library:src/main.rs", //example/library:*)"#
         );
+    }
+
+    #[test]
+    fn rustc_output_files_come_from_the_output_group_and_the_failed_actions() {
+        let failed = vec![
+            // A failed Rustc action: the file next to its primary output.
+            bep::FailedAction {
+                primary_output: Some("/er/bazel-out/bin/a/liba.rlib".into()),
+                stderr: Some("/er/bazel-out/_tmp/actions/stderr-1".into()),
+            },
+            // The same with a primary output relative to the execution root.
+            bep::FailedAction {
+                primary_output: Some("bazel-out/bin/b/libb.rlib".into()),
+                stderr: Some("/er/bazel-out/_tmp/actions/stderr-2".into()),
+            },
+            // A failed Clippy action: nothing next to its marker, so its stderr.
+            bep::FailedAction {
+                primary_output: Some("/er/bazel-out/bin/c/c.clippy.ok".into()),
+                stderr: Some("/er/bazel-out/_tmp/actions/stderr-3".into()),
+            },
+        ];
+        let exists = |path: &Utf8Path| path.as_str().ends_with(".rlib.rustc-output");
+        let files = rustc_output_files(
+            vec![
+                "/er/bazel-out/bin/d/libd.rlib.rustc-output".into(),
+                "/er/bazel-out/bin/a/liba.rlib.rustc-output".into(),
+            ],
+            failed,
+            Some(Utf8Path::new("/er")),
+            exists,
+        );
+        assert_eq!(
+            files,
+            vec![
+                Utf8PathBuf::from("/er/bazel-out/_tmp/actions/stderr-3"),
+                Utf8PathBuf::from("/er/bazel-out/bin/a/liba.rlib.rustc-output"),
+                Utf8PathBuf::from("/er/bazel-out/bin/b/libb.rlib.rustc-output"),
+                Utf8PathBuf::from("/er/bazel-out/bin/d/libd.rlib.rustc-output"),
+            ]
+        );
+        // Without an execution root a relative path cannot be resolved: the stderr stands in.
+        let files = rustc_output_files(
+            vec![],
+            vec![bep::FailedAction {
+                primary_output: Some("bazel-out/bin/b/libb.rlib".into()),
+                stderr: Some("/er/stderr-2".into()),
+            }],
+            None,
+            |_| true,
+        );
+        assert_eq!(files, vec![Utf8PathBuf::from("/er/stderr-2")]);
+    }
+
+    #[test]
+    fn pick_label_prefers_the_non_test_owner() {
+        assert_eq!(
+            pick_label("rust_test rule //tools/taz:test\nrust_binary rule //tools/taz:taz\n")
+                .as_deref(),
+            Some("//tools/taz:taz")
+        );
+        assert_eq!(
+            pick_label("rust_test rule //pkg:lib_test\n").as_deref(),
+            Some("//pkg:lib_test")
+        );
+        assert_eq!(
+            pick_label("rust_library rule //pkg:lib\nrust_test rule //pkg:lib_test\n").as_deref(),
+            Some("//pkg:lib")
+        );
+        assert_eq!(pick_label("\n"), None);
     }
 
     #[test]

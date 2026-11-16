@@ -114,6 +114,35 @@ def pipelined_compilation():
         build_setting_default = False,
     )
 
+def experimental_persistent_worker():
+    """Let `Rustc`, `RustcMetadata` and `Clippy` actions run in persistent workers.
+
+    With this flag the actions of the main repository's crates, in non-`opt` builds, run the
+    process wrapper through its worker front end (`//util/process_wrapper/worker`), advertise
+    `supports-workers` and keep the per-crate environment and all of the process wrapper's
+    arguments in flag files, so every rustc action shares one pool of workers and every clippy
+    action another. The actions still run one-shot (remotely, sandboxed or with
+    `--strategy=Rustc=local`) with the same inputs and carry no `no-remote-*` requirement, so
+    which of a worker and remote execution runs one is the strategy's choice
+    (`--strategy=Rustc=worker,remote`), after the usual remote cache lookup.
+
+    The flag changes the action, so it is meant to be on in every build of a repository, CI's
+    included: CI's one-shot compiles then leave the remote cache entries a developer's
+    worker-strategy build looks up, and only the crates whose inputs changed compile, in the
+    worker. Whether a worker compiles with rustc's incremental compilation (state under
+    `<output base>/rustc-incremental/<configuration>/<driver>` between builds, rustc's and
+    clippy-driver's apart) is its startup flag, `--worker_extra_flag=Rustc=--rustc-incremental=true`
+    (and `Clippy=`): an execution option Bazel gives local workers only, in no action, no cache
+    key, and never passed to a remote executor.
+    The process wrapper itself is unchanged, so the actions of external repositories' crates, of
+    `opt` builds, and every action without this flag keep the action keys (and remote cache
+    entries) they have without it.
+    """
+    bool_flag(
+        name = "experimental_persistent_worker",
+        build_setting_default = False,
+    )
+
 # buildifier: disable=unnamed-macro
 def experimental_use_cc_common_link():
     """A flag to control whether to link rust_binary and rust_test targets using \
