@@ -17,6 +17,7 @@ mod options;
 mod output;
 mod rustc;
 mod util;
+mod worker;
 
 use std::collections::HashMap;
 use std::fmt;
@@ -119,6 +120,9 @@ fn process_line(
 }
 
 fn main() -> Result<(), ProcessWrapperError> {
+    if worker::requested() {
+        worker::main();
+    }
     let opts = options().map_err(|e| ProcessWrapperError(e.to_string()))?;
 
     let mut command = Command::new(opts.executable);

@@ -1753,6 +1753,34 @@ def setup_zself_profile(ctx, crate_info):
 
     return profiling_dir, profiling_flags
 
+def _incremental_worker_requirements(ctx):
+    """Execution requirements that let a local persistent worker run a crate's `Rustc` action.
+
+    Opted into with `--define=rules_rust_incremental_worker=true`, for the crates of the main
+    repository in non-`opt` builds; nothing else changes. The worker
+    (`util/process_wrapper/worker.rs`) compiles with rustc's incremental compilation, under the
+    execution root's `bazel-out/_rustc_worker`, when a build runs the action with the worker
+    strategy (`--strategy=Rustc=worker,remote`).
+
+    `supports-multiplex-workers` rather than `supports-workers`: Bazel adds a `persistentWorkerKey`
+    to the remote cache key of `supports-workers` actions under
+    `--experimental_remote_mark_tool_inputs`, and not of these. The command line, environment and
+    inputs are untouched, so the action still hits the remote cache entries of builds without the
+    define. `--modify_execution_info` cannot add the requirement: it sets an empty value, and the
+    worker strategy only takes `"1"`. The worker speaks Bazel's JSON worker protocol.
+
+    Args:
+        ctx (ctx): The rule's context object.
+
+    Returns:
+        dict: The extra execution requirements, possibly empty.
+    """
+    if ctx.var.get("rules_rust_incremental_worker") != "true":
+        return {}
+    if ctx.label.workspace_name or ctx.var["COMPILATION_MODE"] == "opt":
+        return {}
+    return {"requires-worker-protocol": "json", "supports-multiplex-workers": "1"}
+
 def rustc_compile_action(
         *,
         ctx,
@@ -2058,7 +2086,7 @@ def rustc_compile_action(
             ),
             toolchain = "@rules_rust//rust:toolchain_type",
             resource_set = get_rustc_resource_set(toolchain),
-            execution_requirements = {"supports-path-mapping": ""} if args.supports_path_mapping else None,
+            execution_requirements = ({"supports-path-mapping": ""} if args.supports_path_mapping else {}) | _incremental_worker_requirements(ctx),
         )
         if args_metadata:
             ctx.actions.run(
